@@ -43,6 +43,7 @@ public class ReciboEmpresaController {
         existente.setLitrosRecibidos(recibo.getLitrosRecibidos());
         existente.setPrecioLitro(recibo.getPrecioLitro());
         existente.setPrecioTransporte(recibo.getPrecioTransporte());
+        existente.setSoloTransporte(recibo.getSoloTransporte());
         existente.setFecha(recibo.getFecha());
         return ResponseEntity.ok(reciboEmpresaService.guardar(existente));
     }

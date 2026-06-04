@@ -81,8 +81,11 @@ public class ReciboEmpresaService {
                             Comparator.nullsLast(Comparator.naturalOrder())))
                     .collect(Collectors.toList());
 
-            double litrosEntregados = empresasDia.stream()
-                    .mapToDouble(EntregaDiariaEmpresaDTO::getLitros).sum();
+            // Solo suman al rinde los recibos donde la empresa paga completo (no solo transporte)
+            double litrosEntregados = recibosDia.stream()
+                    .filter(r -> r.getSoloTransporte() == null || !r.getSoloTransporte())
+                    .mapToDouble(r -> r.getLitrosRecibidos() != null ? r.getLitrosRecibidos() : 0)
+                    .sum();
 
             TransporteDiarioDTO dia = new TransporteDiarioDTO();
             dia.setFecha(fecha.toString());

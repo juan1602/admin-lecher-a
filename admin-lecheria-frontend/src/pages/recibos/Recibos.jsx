@@ -9,6 +9,7 @@ const FORM_VACIO = {
   litrosRecibidos: '',
   precioLitro: '',
   precioTransporte: '',
+  soloTransporte: false,
   fecha: new Date().toISOString().split('T')[0]
 }
 
@@ -54,7 +55,10 @@ function Recibos() {
     }
   }
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target
+    setForm({ ...form, [name]: type === 'checkbox' ? checked : value })
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -63,6 +67,7 @@ function Recibos() {
       litrosRecibidos: parseFloat(form.litrosRecibidos),
       precioLitro: parseFloat(form.precioLitro),
       precioTransporte: form.precioTransporte ? parseFloat(form.precioTransporte) : null,
+      soloTransporte: !!form.soloTransporte,
       fecha: form.fecha,
       quincena: { id: quincenaAbierta.id }
     }
@@ -88,6 +93,7 @@ function Recibos() {
       litrosRecibidos: r.litrosRecibidos ?? '',
       precioLitro: r.precioLitro ?? '',
       precioTransporte: r.precioTransporte ?? '',
+      soloTransporte: r.soloTransporte ?? false,
       fecha: r.fecha ?? new Date().toISOString().split('T')[0]
     })
     setMostrarFormulario(true)
@@ -199,6 +205,25 @@ function Recibos() {
                 )}
               </div>
             </div>
+            {/* Checkbox solo transporte */}
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: 'pointer',
+              marginBottom: '14px', padding: '10px 16px', borderRadius: '8px',
+              background: form.soloTransporte ? '#fff3e0' : '#f5f5f5',
+              border: form.soloTransporte ? '1px solid #ffcc80' : '1px solid #e0e0e0',
+              fontSize: '14px', color: form.soloTransporte ? '#e65100' : '#555'
+            }}>
+              <input type="checkbox" name="soloTransporte"
+                checked={!!form.soloTransporte} onChange={handleChange}
+                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#e65100' }} />
+              <span>
+                <strong>Solo transporte</strong> — ellos le pagan directo al proveedor
+                {form.soloTransporte && <span style={{ marginLeft: '8px', fontSize: '12px' }}>
+                  (no cuenta para el rinde)
+                </span>}
+              </span>
+            </label>
+
             <div style={{ display: 'flex', gap: '12px' }}>
               <button type="submit"
                 style={{ background: '#6c63ff', color: 'white', border: 'none', padding: '10px 24px', borderRadius: '8px', cursor: 'pointer' }}>
@@ -286,7 +311,14 @@ function Recibos() {
                 const vProv  = (r.litrosRecibidos ?? 0) * ((r.precioLitro ?? 0) - (r.precioTransporte ?? 0))
                 return (
                   <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0', background: editando === r.id ? '#f3f0ff' : i % 2 === 0 ? 'white' : '#fafafa' }}>
-                    <td style={{ ...td, fontWeight: '500' }}>{r.nombreRecibo}</td>
+                    <td style={{ ...td, fontWeight: '500' }}>
+                      {r.nombreRecibo}
+                      {r.soloTransporte && (
+                        <span style={{ marginLeft: '6px', fontSize: '11px', background: '#fff3e0', color: '#e65100', padding: '2px 6px', borderRadius: '4px' }}>
+                          solo trans.
+                        </span>
+                      )}
+                    </td>
                     <td style={{ ...td, color: '#666' }}>{r.fecha}</td>
                     <td style={{ ...td, textAlign: 'right' }}>{fmtL(r.litrosRecibidos)} L</td>
                     <td style={{ ...td, textAlign: 'right', color: '#666' }}>${fmt(r.precioLitro)}</td>
