@@ -23,6 +23,23 @@ function Recolecciones() {
 
   useEffect(() => { cargarDatos() }, [])
 
+  // Auto-refresh: recarga cuando vuelves a la pestaña o cada 60 segundos
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && quincenaAbierta) {
+        cargarRecolecciones(quincenaAbierta.id)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [quincenaAbierta])
+
+  useEffect(() => {
+    if (!quincenaAbierta) return
+    const intervalo = setInterval(() => cargarRecolecciones(quincenaAbierta.id), 60000)
+    return () => clearInterval(intervalo)
+  }, [quincenaAbierta])
+
   useEffect(() => {
     if (rutaSeleccionada) cargarProveedoresPorRuta(rutaSeleccionada)
   }, [rutaSeleccionada])

@@ -28,7 +28,7 @@ public class ReciboEmpresa {
     @Column(name = "precio_transporte")
     private Double precioTransporte;
 
-    @Column(name = "solo_transporte", nullable = false)
+    @Column(name = "solo_transporte")
     private Boolean soloTransporte = false;
 
     @Column(nullable = false)
@@ -49,7 +49,7 @@ public class ReciboEmpresa {
     public void setPrecioLitro(Double precioLitro) { this.precioLitro = precioLitro; }
     public Double getPrecioTransporte() { return precioTransporte; }
     public void setPrecioTransporte(Double precioTransporte) { this.precioTransporte = precioTransporte; }
-    public Boolean getSoloTransporte() { return soloTransporte; }
+    public Boolean getSoloTransporte() { return soloTransporte != null ? soloTransporte : false; }
     public void setSoloTransporte(Boolean soloTransporte) { this.soloTransporte = soloTransporte != null && soloTransporte; }
     public LocalDate getFecha() { return fecha; }
     public void setFecha(LocalDate fecha) { this.fecha = fecha; }
