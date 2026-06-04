@@ -1,0 +1,21 @@
+# Maven
+admin-lecheria/target/
+admin-lecheria/.mvn/wrapper/maven-wrapper.jar
+
+# Node / Vite
+admin-lecheria-frontend/node_modules/
+admin-lecheria-frontend/dist/
+
+# Variables de entorno (nunca subir)
+*.env
+.env.local
+.env.production.local
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.class
+
+# Logs
+*.log

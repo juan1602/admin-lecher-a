@@ -1,0 +1,230 @@
+import { useState, useEffect } from 'react'
+import api from '../../api/axios'
+import ReciboProveedorModal from './ReciboProveedorModal'
+
+const fmt = (n) => Math.round(n).toLocaleString('es-CO')
+const fmtL = (n) => Number(n).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })
+
+function ResumenQuincena() {
+  const [quincenas, setQuincenas] = useState([])
+  const [quincenaId, setQuincenaId] = useState('')
+  const [quincenaTexto, setQuincenaTexto] = useState('')
+  const [resumen, setResumen] = useState(null)
+  const [cargando, setCargando] = useState(false)
+  const [error, setError] = useState(null)
+  const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null)
+
+  useEffect(() => {
+    api.get('/quincenas')
+      .then(r => {
+        setQuincenas(r.data)
+        const abierta = r.data.find(q => !q.cerrada)
+        if (abierta) {
+          setQuincenaId(String(abierta.id))
+          setQuincenaTexto(abierta.textoQuincena || '')
+          cargarResumen(abierta.id)
+        }
+      })
+      .catch(() => setError('No se pudo conectar con el servidor. Verifica que el backend esté corriendo en el puerto 8092.'))
+  }, [])
+
+  const cargarResumen = async (id) => {
+    if (!id) return
+    setCargando(true)
+    setError(null)
+    try {
+      const r = await api.get(`/recolecciones/resumen/${id}`)
+      setResumen(r.data)
+    } catch (e) {
+      setResumen(null)
+      const msg = e?.response?.data?.message || e?.response?.status
+      setError(`Error al cargar el resumen${msg ? `: ${msg}` : '. Verifica que el servidor esté activo.'}`)
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  const handleQuincenaChange = (e) => {
+    const q = quincenas.find(q => String(q.id) === e.target.value)
+    setQuincenaId(e.target.value)
+    setQuincenaTexto(q?.textoQuincena || '')
+    setResumen(null)
+    setError(null)
+    if (e.target.value) cargarResumen(e.target.value)
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <h2 style={{ margin: 0 }}>Resumen de Quincena</h2>
+      </div>
+
+      {/* Selector de quincena */}
+      <div style={{ background: 'white', padding: '16px', borderRadius: '12px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+        <label style={{ fontSize: '14px', fontWeight: '500', marginRight: '12px' }}>Quincena:</label>
+        <select value={quincenaId} onChange={handleQuincenaChange}
+          style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', minWidth: '280px' }}>
+          <option value="">Seleccionar quincena...</option>
+          {quincenas.map(q => (
+            <option key={q.id} value={q.id}>
+              {q.textoQuincena} {!q.cerrada ? '(Abierta)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {error && (
+        <div style={{ padding: '16px 20px', borderRadius: '10px', background: '#ffebee', color: '#c62828', marginBottom: '16px', border: '1px solid #ffcdd2' }}>
+          ⚠️ {error}
+        </div>
+      )}
+
+      {cargando && (
+        <div style={{ textAlign: 'center', padding: '60px', color: '#999' }}>Calculando resumen...</div>
+      )}
+
+      {resumen && !cargando && (
+        <>
+          {/* Tarjetas de totales globales */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '28px' }}>
+            <Tarjeta label="Proveedores" valor={resumen.totalProveedores} color="#6c63ff" />
+            <Tarjeta label="Total litros" valor={`${fmtL(resumen.totalLitros)} L`} color="#0288d1" />
+            <Tarjeta label="Total descuentos" valor={`$${fmt(resumen.totalDescuentos4x1000 + resumen.totalOtrosDescuentos)}`} color="#e65100" />
+            <Tarjeta label="TOTAL A PAGAR" valor={`$${fmt(resumen.totalValorNeto)}`} color="#1b5e20" grande />
+          </div>
+
+          {/* Título estilo Excel */}
+          <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+            <div style={{
+              background: '#1a1a2e', color: 'white', padding: '14px 20px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <span style={{ fontWeight: '600', fontSize: '14px', letterSpacing: '0.5px' }}>
+                PAGO DE PROVEEDORES — {resumen.textoQuincena?.toUpperCase()}
+              </span>
+              <span style={{ fontSize: '12px', color: '#aaa' }}>
+                Haz clic en un proveedor para ver su recibo detallado
+              </span>
+            </div>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#f5f5f5', borderBottom: '2px solid #e0e0e0' }}>
+                  <th style={{ ...th, width: '40px', textAlign: 'center', color: '#999' }}>#</th>
+                  <th style={th}>Proveedor</th>
+                  <th style={th}>Zona</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Litros</th>
+                  <th style={{ ...th, textAlign: 'right' }}>$/Litro</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Valor bruto</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Descuentos</th>
+                  <th style={{ ...th, textAlign: 'right', color: '#1b5e20' }}>Total a pagar</th>
+                  <th style={{ ...th, textAlign: 'center', width: '80px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {resumen.proveedores.map((p, i) => (
+                  <tr key={p.proveedorId}
+                    style={{
+                      borderBottom: '1px solid #f0f0f0',
+                      background: i % 2 === 0 ? 'white' : '#fafafa',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f0f4ff'}
+                    onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'white' : '#fafafa'}
+                    onClick={() => setProveedorSeleccionado(p)}
+                  >
+                    <td style={{ ...td, textAlign: 'center', color: '#bbb', fontSize: '12px' }}>{i + 1}</td>
+                    <td style={{ ...td, fontWeight: '600' }}>
+                      {p.nombre}
+                      {p.tipoLeche === 'búfala' && (
+                        <span style={{ marginLeft: '6px', fontSize: '11px', background: '#e3f2fd', color: '#1565c0', padding: '2px 6px', borderRadius: '4px' }}>
+                          Búfala
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ ...td, color: '#666', fontSize: '13px' }}>{p.zona || '—'}</td>
+                    <td style={{ ...td, textAlign: 'right' }}>{fmtL(p.totalLitros)}</td>
+                    <td style={{ ...td, textAlign: 'right', color: '#666' }}>${fmt(p.precioLitro)}</td>
+                    <td style={{ ...td, textAlign: 'right' }}>${fmt(p.valorBruto)}</td>
+                    <td style={{ ...td, textAlign: 'right', color: (p.descuento4x1000 + p.totalOtrosDescuentos) > 0 ? '#c62828' : '#ccc', fontSize: '13px' }}>
+                      {(p.descuento4x1000 + p.totalOtrosDescuentos) > 0
+                        ? `-$${fmt(p.descuento4x1000 + p.totalOtrosDescuentos)}`
+                        : '—'}
+                    </td>
+                    <td style={{ ...td, textAlign: 'right', fontWeight: '700', color: '#1b5e20', fontSize: '15px' }}>
+                      ${fmt(p.valorNeto)}
+                    </td>
+                    <td style={{ ...td, textAlign: 'center' }}>
+                      <span style={{ fontSize: '12px', color: '#6c63ff', cursor: 'pointer' }}>Ver recibo</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: '#1a1a2e', color: 'white', fontWeight: '700' }}>
+                  <td colSpan={3} style={{ ...td, color: 'white', fontSize: '13px', letterSpacing: '0.5px' }}>TOTAL A PAGAR</td>
+                  <td style={{ ...td, textAlign: 'right', color: 'white' }}>{fmtL(resumen.totalLitros)}</td>
+                  <td style={td}></td>
+                  <td style={{ ...td, textAlign: 'right', color: 'white' }}>${fmt(resumen.totalValorBruto)}</td>
+                  <td style={{ ...td, textAlign: 'right', color: '#ef9a9a' }}>
+                    -{`$${fmt(resumen.totalDescuentos4x1000 + resumen.totalOtrosDescuentos)}`}
+                  </td>
+                  <td style={{ ...td, textAlign: 'right', color: '#a5d6a7', fontSize: '16px' }}>
+                    ${fmt(resumen.totalValorNeto)}
+                  </td>
+                  <td style={td}></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </>
+      )}
+
+      {!resumen && !cargando && quincenaId && !error && (
+        <div style={{ textAlign: 'center', padding: '60px', color: '#999' }}>
+          No hay recolecciones en esta quincena
+        </div>
+      )}
+
+      {/* Modal de recibo individual */}
+      {proveedorSeleccionado && (
+        <ReciboProveedorModal
+          proveedor={proveedorSeleccionado}
+          textoQuincena={quincenaTexto}
+          onClose={() => setProveedorSeleccionado(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function Tarjeta({ label, valor, color, grande = false }) {
+  return (
+    <div style={{
+      background: 'white', padding: '20px', borderRadius: '12px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)', borderTop: `3px solid ${color}`
+    }}>
+      <p style={{ margin: 0, fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</p>
+      <p style={{ margin: '6px 0 0', fontSize: grande ? '22px' : '19px', fontWeight: '700', color }}>
+        {valor}
+      </p>
+    </div>
+  )
+}
+
+const th = {
+  padding: '11px 14px',
+  textAlign: 'left',
+  fontSize: '12px',
+  fontWeight: '600',
+  letterSpacing: '0.3px',
+  color: '#444'
+}
+
+const td = {
+  padding: '11px 14px',
+  fontSize: '14px'
+}
+
+export default ResumenQuincena
