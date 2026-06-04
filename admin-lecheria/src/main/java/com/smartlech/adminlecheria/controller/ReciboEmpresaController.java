@@ -32,8 +32,12 @@ public class ReciboEmpresaController {
     }
 
     @PostMapping
-    public ResponseEntity<ReciboEmpresa> crear(@RequestBody ReciboEmpresa recibo) {
-        return ResponseEntity.ok(reciboEmpresaService.guardar(recibo));
+    public ResponseEntity<?> crear(@RequestBody ReciboEmpresa recibo) {
+        try {
+            return ResponseEntity.ok(reciboEmpresaService.guardar(recibo));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")

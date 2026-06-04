@@ -1,70 +1,127 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 
-const fmt = (n) => Math.round(n ?? 0).toLocaleString('es-CO')
+const fmt  = (n) => Math.round(n ?? 0).toLocaleString('es-CO')
 const fmtL = (n) => Number(n ?? 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })
 
 const FORM_VACIO = {
-  nombreRecibo: '',
-  litrosRecibidos: '',
-  precioLitro: '',
-  precioTransporte: '',
-  soloTransporte: false,
+  nombreRecibo: '', litrosRecibidos: '', precioLitro: '',
+  precioTransporte: '', soloTransporte: false,
   fecha: new Date().toISOString().split('T')[0]
 }
 
 function Recibos() {
   const [quincenaAbierta, setQuincenaAbierta] = useState(null)
-  const [recibos, setRecibos] = useState([])
-  const [mostrarFormulario, setMostrarFormulario] = useState(false)
-  const [editando, setEditando] = useState(null)
-  const [form, setForm] = useState(FORM_VACIO)
-  const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date().toISOString().split('T')[0])
+  const [recibos, setRecibos]               = useState([])
+  const [fechaSeleccionada, setFecha]       = useState(new Date().toISOString().split('T')[0])
+  const [modal, setModal]                   = useState(null)  // { modo: 'nuevo'|'editar', empresa, recibo }
+  const [form, setForm]                     = useState(FORM_VACIO)
+  const [error, setError]                   = useState(null)
+  const [guardando, setGuardando]           = useState(false)
 
   useEffect(() => { cargarDatos() }, [])
 
   const cargarDatos = async () => {
     try {
-      const quincenaRes = await api.get('/quincenas/abierta')
-      setQuincenaAbierta(quincenaRes.data)
-      cargarRecibos(quincenaRes.data.id)
-    } catch {
-      // No hay quincena abierta
-    }
+      const q = await api.get('/quincenas/abierta')
+      setQuincenaAbierta(q.data)
+      cargarRecibos(q.data.id)
+    } catch { /* sin quincena */ }
   }
 
-  const cargarRecibos = async (quincenaId) => {
-    const res = await api.get(`/recibos/quincena/${quincenaId}`)
+  const cargarRecibos = async (qId) => {
+    const res = await api.get(`/recibos/quincena/${qId}`)
     setRecibos(res.data)
   }
 
-  // Auto-rellena precios cuando el nombre coincide con una empresa ya registrada
-  const handleNombreChange = (e) => {
-    const nombre = e.target.value
-    const existente = recibos.find(
-      r => r.nombreRecibo?.toLowerCase() === nombre.toLowerCase() && r.id !== editando
-    )
-    if (existente) {
-      setForm(f => ({
-        ...f,
-        nombreRecibo: nombre,
-        precioLitro: existente.precioLitro ?? f.precioLitro,
-        precioTransporte: existente.precioTransporte ?? f.precioTransporte
-      }))
-    } else {
-      setForm(f => ({ ...f, nombreRecibo: nombre }))
+  // Navegar días
+  const cambiarDia = (delta) => {
+    const d = new Date(fechaSeleccionada + 'T12:00:00')
+    d.setDate(d.getDate() + delta)
+    const nueva = d.toISOString().split('T')[0]
+    if (quincenaAbierta) {
+      if (nueva < quincenaAbierta.fechaInicio || nueva > quincenaAbierta.fechaFin) return
     }
+    setFecha(nueva)
+  }
+
+  const formatDiaLabel = (f) => {
+    if (!f) return ''
+    const [a, m, d] = f.split('-')
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+    return `${parseInt(d)} de ${meses[parseInt(m)-1]} de ${a}`
+  }
+
+  // Empresas únicas de la quincena (normalizadas)
+  const empresasMap = {}
+  recibos.forEach(r => {
+    const key = (r.nombreRecibo ?? '').trim().toLowerCase()
+    if (key && !empresasMap[key]) {
+      empresasMap[key] = {
+        nombre: r.nombreRecibo.trim(),
+        precioLitro: r.precioLitro,
+        precioTransporte: r.precioTransporte,
+        soloTransporte: r.soloTransporte
+      }
+    }
+  })
+  const empresas = Object.values(empresasMap).sort((a, b) => a.nombre.localeCompare(b.nombre))
+
+  // Recibos del día seleccionado
+  const delDia = recibos.filter(r => r.fecha === fechaSeleccionada)
+  const delDiaMap = {}
+  delDia.forEach(r => { delDiaMap[(r.nombreRecibo ?? '').trim().toLowerCase()] = r })
+
+  // Totales del día
+  const litrosDia  = delDia.reduce((s, r) => s + (r.litrosRecibidos ?? 0), 0)
+  const litrosTotal = recibos.reduce((s, r) => s + (r.litrosRecibidos ?? 0), 0)
+
+  // Abrir modal para agregar a empresa conocida
+  const abrirAgregar = (empresa) => {
+    setError(null)
+    setForm({
+      nombreRecibo: empresa.nombre,
+      litrosRecibidos: '',
+      precioLitro: empresa.precioLitro ?? '',
+      precioTransporte: empresa.precioTransporte ?? '',
+      soloTransporte: empresa.soloTransporte ?? false,
+      fecha: fechaSeleccionada
+    })
+    setModal({ modo: 'agregar', empresa })
+  }
+
+  // Abrir modal para editar recibo existente
+  const abrirEditar = (recibo) => {
+    setError(null)
+    setForm({
+      nombreRecibo: recibo.nombreRecibo ?? '',
+      litrosRecibidos: recibo.litrosRecibidos ?? '',
+      precioLitro: recibo.precioLitro ?? '',
+      precioTransporte: recibo.precioTransporte ?? '',
+      soloTransporte: recibo.soloTransporte ?? false,
+      fecha: recibo.fecha ?? fechaSeleccionada
+    })
+    setModal({ modo: 'editar', recibo })
+  }
+
+  // Abrir modal para nueva empresa
+  const abrirNuevo = () => {
+    setError(null)
+    setForm({ ...FORM_VACIO, fecha: fechaSeleccionada })
+    setModal({ modo: 'nuevo' })
   }
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    setForm({ ...form, [name]: type === 'checkbox' ? checked : value })
+    setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setGuardando(true)
+    setError(null)
     const payload = {
-      nombreRecibo: form.nombreRecibo,
+      nombreRecibo: form.nombreRecibo.trim(),
       litrosRecibidos: parseFloat(form.litrosRecibidos),
       precioLitro: parseFloat(form.precioLitro),
       precioTransporte: form.precioTransporte ? parseFloat(form.precioTransporte) : null,
@@ -73,38 +130,19 @@ function Recibos() {
       quincena: { id: quincenaAbierta.id }
     }
     try {
-      if (editando) {
-        await api.put(`/recibos/${editando}`, payload)
-        setEditando(null)
+      if (modal?.modo === 'editar') {
+        await api.put(`/recibos/${modal.recibo.id}`, payload)
       } else {
         await api.post('/recibos', payload)
       }
-      setForm(FORM_VACIO)
-      setMostrarFormulario(false)
+      setModal(null)
       cargarRecibos(quincenaAbierta.id)
-    } catch {
-      alert('Error al guardar el recibo')
+    } catch (err) {
+      const msg = err?.response?.data || err?.response?.data?.message
+      setError(typeof msg === 'string' ? msg : 'Error al guardar. Verifica que no sea un duplicado.')
+    } finally {
+      setGuardando(false)
     }
-  }
-
-  const iniciarEdicion = (r) => {
-    setEditando(r.id)
-    setForm({
-      nombreRecibo: r.nombreRecibo ?? '',
-      litrosRecibidos: r.litrosRecibidos ?? '',
-      precioLitro: r.precioLitro ?? '',
-      precioTransporte: r.precioTransporte ?? '',
-      soloTransporte: r.soloTransporte ?? false,
-      fecha: r.fecha ?? new Date().toISOString().split('T')[0]
-    })
-    setMostrarFormulario(true)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const cancelar = () => {
-    setEditando(null)
-    setMostrarFormulario(false)
-    setForm(FORM_VACIO)
   }
 
   const eliminar = async (id) => {
@@ -114,332 +152,222 @@ function Recibos() {
     }
   }
 
-  // Recibos del día seleccionado
-  const delDia = recibos.filter(r => r.fecha === fechaSeleccionada)
-  const totalLitrosDia = delDia.reduce((s, r) => s + (r.litrosRecibidos ?? 0), 0)
-
-  const cambiarDia = (delta) => {
-    const d = new Date(fechaSeleccionada + 'T12:00:00')
-    d.setDate(d.getDate() + delta)
-    const nueva = d.toISOString().split('T')[0]
-    if (quincenaAbierta) {
-      if (nueva < quincenaAbierta.fechaInicio || nueva > quincenaAbierta.fechaFin) return
-    }
-    setFechaSeleccionada(nueva)
-  }
-
-  const formatDiaLabel = (fecha) => {
-    if (!fecha) return ''
-    const [anio, mes, dia] = fecha.split('-')
-    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
-    return `${parseInt(dia)} de ${meses[parseInt(mes) - 1]} de ${anio}`
-  }
-
-  // Totales globales
-  const totalLitros = recibos.reduce((s, r) => s + (r.litrosRecibidos ?? 0), 0)
-  const totalValor  = recibos.reduce((s, r) => s + (r.litrosRecibidos ?? 0) * (r.precioLitro ?? 0), 0)
-  const totalTrans  = recibos.reduce((s, r) => s + (r.litrosRecibidos ?? 0) * (r.precioTransporte ?? 0), 0)
-  const totalProvee = totalValor - totalTrans
-
-  // Resumen por empresa
-  const porEmpresa = recibos.reduce((acc, r) => {
-    const k = r.nombreRecibo ?? 'Sin nombre'
-    if (!acc[k]) acc[k] = { litros: 0, valorTotal: 0, valorTrans: 0, valorProv: 0, precioLitro: r.precioLitro, precioTrans: r.precioTransporte }
-    acc[k].litros     += r.litrosRecibidos ?? 0
-    acc[k].valorTotal += (r.litrosRecibidos ?? 0) * (r.precioLitro ?? 0)
-    acc[k].valorTrans += (r.litrosRecibidos ?? 0) * (r.precioTransporte ?? 0)
-    acc[k].valorProv  += (r.litrosRecibidos ?? 0) * ((r.precioLitro ?? 0) - (r.precioTransporte ?? 0))
-    return acc
-  }, {})
-
   if (!quincenaAbierta) {
     return (
       <div style={{ textAlign: 'center', padding: '60px', color: '#999' }}>
         <h2>No hay quincena abierta</h2>
-        <p>Ve a la sección de Quincenas y crea una para empezar a registrar recibos.</p>
+        <p>Ve a Quincenas y crea una para empezar.</p>
       </div>
     )
   }
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      {/* Encabezado */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <h2 style={{ margin: 0 }}>Recibos de la empresa</h2>
           <span style={{ fontSize: '13px', color: '#666' }}>{quincenaAbierta.textoQuincena}</span>
         </div>
-        <button onClick={() => {
-            setEditando(null)
-            setForm({ ...FORM_VACIO, fecha: fechaSeleccionada })
-            setMostrarFormulario(!mostrarFormulario)
-          }}
-          style={{ background: '#6c63ff', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer' }}>
-          {mostrarFormulario ? 'Cancelar' : '+ Nuevo recibo'}
+        <button onClick={abrirNuevo}
+          style={{ background: '#6c63ff', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
+          + Nueva empresa
         </button>
-      </div>
-
-      {/* Tarjetas de totales */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
-        <Tarjeta label="Total litros" valor={`${fmtL(totalLitros)} L`} color="#0288d1" />
-        <Tarjeta label="Valor total recibido" valor={`$${fmt(totalValor)}`} color="#388e3c" />
-        <Tarjeta label="Valor transporte" valor={`$${fmt(totalTrans)}`} color="#e65100" />
-        <Tarjeta label="Valor a proveedores" valor={`$${fmt(totalProvee)}`} color="#6c63ff" />
       </div>
 
       {/* Navegador de días */}
       <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '20px', padding: '16px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           <button onClick={() => cambiarDia(-1)}
-            style={{ background: '#f0f0f0', border: 'none', borderRadius: '8px', padding: '10px 18px', fontSize: '18px', cursor: 'pointer', fontWeight: '700', color: '#333' }}>
-            ‹
-          </button>
+            style={{ background: '#f0f0f0', border: 'none', borderRadius: '8px', padding: '10px 18px', fontSize: '18px', cursor: 'pointer', fontWeight: '700' }}>‹</button>
           <div style={{ flex: 1, textAlign: 'center' }}>
             <input type="date" value={fechaSeleccionada}
-              min={quincenaAbierta?.fechaInicio}
-              max={quincenaAbierta?.fechaFin}
-              onChange={e => setFechaSeleccionada(e.target.value)}
+              min={quincenaAbierta.fechaInicio} max={quincenaAbierta.fechaFin}
+              onChange={e => setFecha(e.target.value)}
               style={{ border: 'none', fontSize: '15px', fontWeight: '600', color: '#1a1a2e', background: 'transparent', cursor: 'pointer', textAlign: 'center' }} />
             <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{formatDiaLabel(fechaSeleccionada)}</div>
           </div>
           <button onClick={() => cambiarDia(1)}
-            style={{ background: '#f0f0f0', border: 'none', borderRadius: '8px', padding: '10px 18px', fontSize: '18px', cursor: 'pointer', fontWeight: '700', color: '#333' }}>
-            ›
-          </button>
-          <div style={{ display: 'flex', gap: '20px', marginLeft: 'auto', flexWrap: 'wrap' }}>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '12px', color: '#888' }}>Recibos hoy</div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#6c63ff' }}>{delDia.length}</div>
-            </div>
+            style={{ background: '#f0f0f0', border: 'none', borderRadius: '8px', padding: '10px 18px', fontSize: '18px', cursor: 'pointer', fontWeight: '700' }}>›</button>
+          <div style={{ display: 'flex', gap: '20px', marginLeft: 'auto' }}>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: '12px', color: '#888' }}>Litros hoy</div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#0288d1' }}>{fmtL(totalLitrosDia)} L</div>
+              <div style={{ fontSize: '22px', fontWeight: '700', color: '#0288d1' }}>{fmtL(litrosDia)} L</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '12px', color: '#888' }}>Total quincena</div>
+              <div style={{ fontSize: '22px', fontWeight: '700', color: '#388e3c' }}>{fmtL(litrosTotal)} L</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Formulario */}
-      {mostrarFormulario && (
-        <div style={{ background: 'white', padding: '24px', borderRadius: '12px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          <h3 style={{ marginTop: 0, marginBottom: '16px' }}>{editando ? 'Editar recibo' : 'Nuevo recibo'}</h3>
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-              <div>
-                <label style={lbl}>Empresa / Nombre</label>
-                <input name="nombreRecibo" value={form.nombreRecibo} onChange={handleNombreChange} required
-                  placeholder="Ej: Consuelo, Tatiana..."
-                  style={inp} list="empresas-list" />
-                <datalist id="empresas-list">
-                  {Object.keys(porEmpresa).map(n => <option key={n} value={n} />)}
-                </datalist>
-              </div>
-              <div>
-                <label style={lbl}>Fecha</label>
-                <input name="fecha" value={form.fecha} onChange={handleChange} type="date" required style={inp} />
-              </div>
-              <div>
-                <label style={lbl}>Litros recibidos</label>
-                <input name="litrosRecibidos" value={form.litrosRecibidos} onChange={handleChange}
-                  type="number" step="0.1" required style={inp} />
-              </div>
-              <div>
-                <label style={lbl}>Precio total ($/litro que paga empresa)</label>
-                <input name="precioLitro" value={form.precioLitro} onChange={handleChange}
-                  type="number" step="1" required style={inp} placeholder="Ej: 1925" />
-              </div>
-              <div>
-                <label style={lbl}>Precio transporte ($/litro)</label>
-                <input name="precioTransporte" value={form.precioTransporte} onChange={handleChange}
-                  type="number" step="1" style={inp} placeholder="Ej: 225" />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                {form.precioLitro && form.precioTransporte && (
-                  <div style={{ padding: '8px 12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', width: '100%' }}>
-                    <div style={{ fontSize: '12px', color: '#666' }}>Precio proveedor (calculado):</div>
-                    <div style={{ fontSize: '16px', fontWeight: '700', color: '#166534' }}>
-                      ${fmt(parseFloat(form.precioLitro || 0) - parseFloat(form.precioTransporte || 0))}/litro
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            {/* Checkbox solo transporte */}
-            <label style={{
-              display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: 'pointer',
-              marginBottom: '14px', padding: '10px 16px', borderRadius: '8px',
-              background: form.soloTransporte ? '#fff3e0' : '#f5f5f5',
-              border: form.soloTransporte ? '1px solid #ffcc80' : '1px solid #e0e0e0',
-              fontSize: '14px', color: form.soloTransporte ? '#e65100' : '#555'
-            }}>
-              <input type="checkbox" name="soloTransporte"
-                checked={!!form.soloTransporte} onChange={handleChange}
-                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#e65100' }} />
-              <span>
-                <strong>Solo transporte</strong> — ellos le pagan directo al proveedor
-                {form.soloTransporte && <span style={{ marginLeft: '8px', fontSize: '12px' }}>
-                  (no cuenta para el rinde)
-                </span>}
-              </span>
-            </label>
-
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button type="submit"
-                style={{ background: '#6c63ff', color: 'white', border: 'none', padding: '10px 24px', borderRadius: '8px', cursor: 'pointer' }}>
-                {editando ? 'Actualizar' : 'Guardar'}
-              </button>
-              <button type="button" onClick={cancelar}
-                style={{ background: '#f5f5f5', color: '#444', border: 'none', padding: '10px 24px', borderRadius: '8px', cursor: 'pointer' }}>
-                Cancelar
-              </button>
-            </div>
-          </form>
+      {/* Panel de empresas del día */}
+      {empresas.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px', color: '#999', background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          Aún no hay empresas registradas. Toca <strong>+ Nueva empresa</strong> para comenzar.
         </div>
-      )}
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {empresas.map(emp => {
+            const key = emp.nombre.toLowerCase()
+            const rec = delDiaMap[key]
+            const tieneEntrada = !!rec
+            const vProv = rec ? (rec.litrosRecibidos ?? 0) * ((rec.precioLitro ?? 0) - (rec.precioTransporte ?? 0)) : 0
 
-      {/* Resumen por empresa */}
-      {Object.keys(porEmpresa).length > 0 && (
-        <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '24px', overflow: 'hidden' }}>
-          <div style={{ background: '#1a1a2e', color: 'white', padding: '12px 18px', fontWeight: '600', fontSize: '13px', letterSpacing: '0.4px' }}>
-            RESUMEN POR EMPRESA
-          </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
-                <th style={th}>Empresa</th>
-                <th style={{ ...th, textAlign: 'right' }}>$/Litro total</th>
-                <th style={{ ...th, textAlign: 'right' }}>$/Trans.</th>
-                <th style={{ ...th, textAlign: 'right' }}>$/Proveedor</th>
-                <th style={{ ...th, textAlign: 'right' }}>Litros</th>
-                <th style={{ ...th, textAlign: 'right' }}>Valor total</th>
-                <th style={{ ...th, textAlign: 'right', color: '#e65100' }}>Transporte</th>
-                <th style={{ ...th, textAlign: 'right', color: '#1b5e20' }}>A proveedores</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(porEmpresa).map(([nombre, d], i) => (
-                <tr key={nombre} style={{ borderBottom: '1px solid #f0f0f0', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
-                  <td style={{ ...td, fontWeight: '600' }}>{nombre}</td>
-                  <td style={{ ...td, textAlign: 'right', color: '#666' }}>${fmt(d.precioLitro)}</td>
-                  <td style={{ ...td, textAlign: 'right', color: '#e65100' }}>${fmt(d.precioTrans)}</td>
-                  <td style={{ ...td, textAlign: 'right', color: '#1b5e20' }}>${fmt((d.precioLitro ?? 0) - (d.precioTrans ?? 0))}</td>
-                  <td style={{ ...td, textAlign: 'right', fontWeight: '500' }}>{fmtL(d.litros)} L</td>
-                  <td style={{ ...td, textAlign: 'right' }}>${fmt(d.valorTotal)}</td>
-                  <td style={{ ...td, textAlign: 'right', color: '#e65100' }}>${fmt(d.valorTrans)}</td>
-                  <td style={{ ...td, textAlign: 'right', fontWeight: '600', color: '#1b5e20' }}>${fmt(d.valorProv)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr style={{ background: '#1a1a2e', color: 'white', fontWeight: '600' }}>
-                <td colSpan={4} style={{ ...td, color: 'white' }}>TOTAL</td>
-                <td style={{ ...td, textAlign: 'right', color: 'white' }}>{fmtL(totalLitros)} L</td>
-                <td style={{ ...td, textAlign: 'right', color: 'white' }}>${fmt(totalValor)}</td>
-                <td style={{ ...td, textAlign: 'right', color: '#ef9a9a' }}>${fmt(totalTrans)}</td>
-                <td style={{ ...td, textAlign: 'right', color: '#a5d6a7', fontSize: '15px' }}>${fmt(totalProvee)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      )}
-
-      {/* Lista de recibos del día */}
-      <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-        <div style={{ background: '#1a1a2e', color: 'white', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: '600', fontSize: '13px', letterSpacing: '0.4px' }}>
-            RECIBOS DEL {formatDiaLabel(fechaSeleccionada).toUpperCase()}
-          </span>
-          <span style={{ fontSize: '12px', color: '#aaa' }}>{delDia.length} recibo{delDia.length !== 1 ? 's' : ''}</span>
-        </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
-              <th style={th}>Empresa</th>
-              <th style={{ ...th, textAlign: 'right' }}>Litros</th>
-              <th style={{ ...th, textAlign: 'right' }}>$/Litro</th>
-              <th style={{ ...th, textAlign: 'right' }}>$/Trans.</th>
-              <th style={{ ...th, textAlign: 'right' }}>Valor trans.</th>
-              <th style={{ ...th, textAlign: 'right', color: '#1b5e20' }}>Valor proveedor</th>
-              <th style={th}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {delDia.map((r, i) => {
-              const vTrans = (r.litrosRecibidos ?? 0) * (r.precioTransporte ?? 0)
-              const vProv  = (r.litrosRecibidos ?? 0) * ((r.precioLitro ?? 0) - (r.precioTransporte ?? 0))
-              return (
-                <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0', background: editando === r.id ? '#f3f0ff' : i % 2 === 0 ? 'white' : '#fafafa' }}>
-                  <td style={{ ...td, fontWeight: '500' }}>
-                    {r.nombreRecibo}
-                    {r.soloTransporte && (
-                      <span style={{ marginLeft: '6px', fontSize: '11px', background: '#fff3e0', color: '#e65100', padding: '2px 6px', borderRadius: '4px' }}>
+            return (
+              <div key={emp.nombre} style={{
+                background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                borderLeft: `4px solid ${tieneEntrada ? '#2e7d32' : '#e0e0e0'}`,
+                padding: '14px 18px',
+                display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap'
+              }}>
+                {/* Nombre y precios */}
+                <div style={{ flex: 1, minWidth: '140px' }}>
+                  <div style={{ fontWeight: '600', fontSize: '15px', color: '#1a1a2e' }}>
+                    {emp.nombre}
+                    {emp.soloTransporte && (
+                      <span style={{ marginLeft: '8px', fontSize: '11px', background: '#fff3e0', color: '#e65100', padding: '2px 6px', borderRadius: '4px' }}>
                         solo trans.
                       </span>
                     )}
-                  </td>
-                  <td style={{ ...td, textAlign: 'right', fontWeight: '500' }}>{fmtL(r.litrosRecibidos)} L</td>
-                  <td style={{ ...td, textAlign: 'right', color: '#666' }}>${fmt(r.precioLitro)}</td>
-                  <td style={{ ...td, textAlign: 'right', color: r.precioTransporte ? '#e65100' : '#ccc' }}>
-                    {r.precioTransporte ? `$${fmt(r.precioTransporte)}` : '—'}
-                  </td>
-                  <td style={{ ...td, textAlign: 'right', color: '#e65100' }}>
-                    {r.precioTransporte ? `$${fmt(vTrans)}` : '—'}
-                  </td>
-                  <td style={{ ...td, textAlign: 'right', fontWeight: '500', color: '#1b5e20' }}>
-                    ${fmt(r.precioTransporte ? vProv : (r.litrosRecibidos ?? 0) * (r.precioLitro ?? 0))}
-                  </td>
-                  <td style={{ ...td }}>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button onClick={() => iniciarEdicion(r)}
-                        style={{ background: '#e8f5e9', color: '#2e7d32', border: 'none', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                        Editar
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
+                    ${fmt(emp.precioLitro)}/L
+                    {emp.precioTransporte ? ` · Trans: $${fmt(emp.precioTransporte)}/L · Prov: $${fmt((emp.precioLitro ?? 0) - (emp.precioTransporte ?? 0))}/L` : ''}
+                  </div>
+                </div>
+
+                {/* Estado del día */}
+                {tieneEntrada ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '11px', color: '#888' }}>Litros</div>
+                      <div style={{ fontSize: '18px', fontWeight: '700', color: '#0288d1' }}>{fmtL(rec.litrosRecibidos)}</div>
+                    </div>
+                    {rec.precioTransporte && (
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '11px', color: '#888' }}>A proveedores</div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#1b5e20' }}>${fmt(vProv)}</div>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => abrirEditar(rec)}
+                        style={{ background: '#e8f5e9', color: '#2e7d32', border: 'none', padding: '7px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
+                        ✏️ Editar
                       </button>
-                      <button onClick={() => eliminar(r.id)}
-                        style={{ background: '#ffebee', color: '#c62828', border: 'none', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                        Eliminar
+                      <button onClick={() => eliminar(rec.id)}
+                        style={{ background: '#ffebee', color: '#c62828', border: 'none', padding: '7px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                        🗑
                       </button>
                     </div>
-                  </td>
-                </tr>
-              )
-            })}
-            {delDia.length === 0 && (
-              <tr>
-                <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
-                  No hay recibos para este día.<br />
-                  <span style={{ fontSize: '13px' }}>Usa el botón <strong>+ Nuevo recibo</strong> para agregar.</span>
-                </td>
-              </tr>
-            )}
-          </tbody>
-          {delDia.length > 0 && (
-            <tfoot>
-              <tr style={{ background: '#f0fdf4', borderTop: '2px solid #c8e6c9' }}>
-                <td style={{ ...td, fontWeight: '600', color: '#1b5e20' }}>Total del día</td>
-                <td style={{ ...td, textAlign: 'right', fontWeight: '700', color: '#1b5e20', fontSize: '15px' }}>
-                  {fmtL(totalLitrosDia)} L
-                </td>
-                <td colSpan={5} style={td}></td>
-              </tr>
-            </tfoot>
-          )}
-        </table>
-      </div>
-    </div>
-  )
-}
+                  </div>
+                ) : (
+                  <button onClick={() => abrirAgregar(emp)}
+                    style={{ background: '#f3f0ff', color: '#6c63ff', border: '1px dashed #6c63ff', padding: '8px 18px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+                    + Agregar litros
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
-function Tarjeta({ label, valor, color }) {
-  return (
-    <div style={{ background: 'white', padding: '18px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', borderTop: `3px solid ${color}` }}>
-      <p style={{ margin: 0, fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</p>
-      <p style={{ margin: '6px 0 0', fontSize: '20px', fontWeight: '700', color }}>{valor}</p>
+      {/* Modal de formulario */}
+      {modal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}
+          onClick={() => setModal(null)}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '460px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
+            onClick={e => e.stopPropagation()}>
+
+            <h3 style={{ margin: '0 0 20px', fontSize: '16px' }}>
+              {modal.modo === 'editar' ? `Editar — ${modal.recibo?.nombreRecibo}` :
+               modal.modo === 'agregar' ? `Agregar litros — ${modal.empresa?.nombre}` :
+               'Nueva empresa'}
+            </h3>
+
+            {error && (
+              <div style={{ background: '#ffebee', color: '#c62828', padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '13px' }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+                {/* Nombre solo para modo nuevo */}
+                {modal.modo === 'nuevo' && (
+                  <div>
+                    <label style={lbl}>Empresa / Nombre</label>
+                    <input name="nombreRecibo" value={form.nombreRecibo} onChange={handleChange} required
+                      placeholder="Tatiana, Consuelo, Jhoan..." style={inp}
+                      list="empresas-list" />
+                    <datalist id="empresas-list">
+                      {empresas.map(e => <option key={e.nombre} value={e.nombre} />)}
+                    </datalist>
+                  </div>
+                )}
+
+                <div>
+                  <label style={lbl}>Fecha</label>
+                  <input name="fecha" value={form.fecha} onChange={handleChange} type="date"
+                    min={quincenaAbierta.fechaInicio} max={quincenaAbierta.fechaFin}
+                    disabled={modal.modo === 'editar'} style={{ ...inp, background: modal.modo === 'editar' ? '#f5f5f5' : 'white' }} />
+                </div>
+
+                <div>
+                  <label style={lbl}>Litros recibidos</label>
+                  <input name="litrosRecibidos" value={form.litrosRecibidos} onChange={handleChange}
+                    type="number" step="0.1" required autoFocus style={inp} placeholder="Ej: 150" />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={lbl}>$/litro total</label>
+                    <input name="precioLitro" value={form.precioLitro} onChange={handleChange}
+                      type="number" step="1" required style={inp} placeholder="1925" />
+                  </div>
+                  <div>
+                    <label style={lbl}>$/transporte</label>
+                    <input name="precioTransporte" value={form.precioTransporte} onChange={handleChange}
+                      type="number" step="1" style={inp} placeholder="225" />
+                  </div>
+                </div>
+
+                {form.precioLitro && form.precioTransporte && (
+                  <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#1b5e20' }}>
+                    Precio proveedor: <strong>${fmt(parseFloat(form.precioLitro||0) - parseFloat(form.precioTransporte||0))}/litro</strong>
+                  </div>
+                )}
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px',
+                  padding: '10px', borderRadius: '8px', background: form.soloTransporte ? '#fff3e0' : '#f5f5f5' }}>
+                  <input type="checkbox" name="soloTransporte" checked={!!form.soloTransporte} onChange={handleChange}
+                    style={{ width: '16px', height: '16px', accentColor: '#e65100' }} />
+                  <span><strong>Solo transporte</strong> — ellos pagan directo al proveedor</span>
+                </label>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                  <button type="submit" disabled={guardando}
+                    style={{ flex: 1, background: '#6c63ff', color: 'white', border: 'none', padding: '11px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
+                    {guardando ? 'Guardando...' : modal.modo === 'editar' ? 'Actualizar' : 'Guardar'}
+                  </button>
+                  <button type="button" onClick={() => setModal(null)}
+                    style={{ background: '#f5f5f5', color: '#444', border: 'none', padding: '11px 18px', borderRadius: '8px', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 const lbl = { display: 'block', marginBottom: '5px', fontSize: '13px', color: '#555', fontWeight: '500' }
-const inp = { width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', boxSizing: 'border-box' }
-const th  = { padding: '10px 14px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#444' }
-const td  = { padding: '10px 14px', fontSize: '13px' }
+const inp = { width: '100%', padding: '9px 11px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', boxSizing: 'border-box' }
 
 export default Recibos

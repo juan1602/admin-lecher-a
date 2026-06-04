@@ -33,6 +33,20 @@ public class ReciboEmpresaService {
     }
 
     public ReciboEmpresa guardar(ReciboEmpresa recibo) {
+        // Validar que no exista ya un recibo para la misma empresa en el mismo día
+        if (recibo.getId() == null && recibo.getNombreRecibo() != null && recibo.getFecha() != null) {
+            List<ReciboEmpresa> existentes = reciboEmpresaRepository.findByQuincenaId(recibo.getQuincena().getId());
+            boolean yaExiste = existentes.stream().anyMatch(r ->
+                r.getNombreRecibo() != null &&
+                r.getNombreRecibo().trim().equalsIgnoreCase(recibo.getNombreRecibo().trim()) &&
+                r.getFecha() != null &&
+                r.getFecha().equals(recibo.getFecha())
+            );
+            if (yaExiste) {
+                throw new RuntimeException("Ya existe un recibo para '"
+                    + recibo.getNombreRecibo() + "' en la fecha " + recibo.getFecha());
+            }
+        }
         return reciboEmpresaRepository.save(recibo);
     }
 
