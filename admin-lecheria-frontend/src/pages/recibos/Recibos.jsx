@@ -19,6 +19,7 @@ function Recibos() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(FORM_VACIO)
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date().toISOString().split('T')[0])
 
   useEffect(() => { cargarDatos() }, [])
 
@@ -113,6 +114,27 @@ function Recibos() {
     }
   }
 
+  // Recibos del día seleccionado
+  const delDia = recibos.filter(r => r.fecha === fechaSeleccionada)
+  const totalLitrosDia = delDia.reduce((s, r) => s + (r.litrosRecibidos ?? 0), 0)
+
+  const cambiarDia = (delta) => {
+    const d = new Date(fechaSeleccionada + 'T12:00:00')
+    d.setDate(d.getDate() + delta)
+    const nueva = d.toISOString().split('T')[0]
+    if (quincenaAbierta) {
+      if (nueva < quincenaAbierta.fechaInicio || nueva > quincenaAbierta.fechaFin) return
+    }
+    setFechaSeleccionada(nueva)
+  }
+
+  const formatDiaLabel = (fecha) => {
+    if (!fecha) return ''
+    const [anio, mes, dia] = fecha.split('-')
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+    return `${parseInt(dia)} de ${meses[parseInt(mes) - 1]} de ${anio}`
+  }
+
   // Totales globales
   const totalLitros = recibos.reduce((s, r) => s + (r.litrosRecibidos ?? 0), 0)
   const totalValor  = recibos.reduce((s, r) => s + (r.litrosRecibidos ?? 0) * (r.precioLitro ?? 0), 0)
@@ -146,7 +168,11 @@ function Recibos() {
           <h2 style={{ margin: 0 }}>Recibos de la empresa</h2>
           <span style={{ fontSize: '13px', color: '#666' }}>{quincenaAbierta.textoQuincena}</span>
         </div>
-        <button onClick={() => { setEditando(null); setMostrarFormulario(!mostrarFormulario) }}
+        <button onClick={() => {
+            setEditando(null)
+            setForm({ ...FORM_VACIO, fecha: fechaSeleccionada })
+            setMostrarFormulario(!mostrarFormulario)
+          }}
           style={{ background: '#6c63ff', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer' }}>
           {mostrarFormulario ? 'Cancelar' : '+ Nuevo recibo'}
         </button>
@@ -158,6 +184,38 @@ function Recibos() {
         <Tarjeta label="Valor total recibido" valor={`$${fmt(totalValor)}`} color="#388e3c" />
         <Tarjeta label="Valor transporte" valor={`$${fmt(totalTrans)}`} color="#e65100" />
         <Tarjeta label="Valor a proveedores" valor={`$${fmt(totalProvee)}`} color="#6c63ff" />
+      </div>
+
+      {/* Navegador de días */}
+      <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '20px', padding: '16px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <button onClick={() => cambiarDia(-1)}
+            style={{ background: '#f0f0f0', border: 'none', borderRadius: '8px', padding: '10px 18px', fontSize: '18px', cursor: 'pointer', fontWeight: '700', color: '#333' }}>
+            ‹
+          </button>
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <input type="date" value={fechaSeleccionada}
+              min={quincenaAbierta?.fechaInicio}
+              max={quincenaAbierta?.fechaFin}
+              onChange={e => setFechaSeleccionada(e.target.value)}
+              style={{ border: 'none', fontSize: '15px', fontWeight: '600', color: '#1a1a2e', background: 'transparent', cursor: 'pointer', textAlign: 'center' }} />
+            <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{formatDiaLabel(fechaSeleccionada)}</div>
+          </div>
+          <button onClick={() => cambiarDia(1)}
+            style={{ background: '#f0f0f0', border: 'none', borderRadius: '8px', padding: '10px 18px', fontSize: '18px', cursor: 'pointer', fontWeight: '700', color: '#333' }}>
+            ›
+          </button>
+          <div style={{ display: 'flex', gap: '20px', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '12px', color: '#888' }}>Recibos hoy</div>
+              <div style={{ fontSize: '22px', fontWeight: '700', color: '#6c63ff' }}>{delDia.length}</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '12px', color: '#888' }}>Litros hoy</div>
+              <div style={{ fontSize: '22px', fontWeight: '700', color: '#0288d1' }}>{fmtL(totalLitrosDia)} L</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Formulario */}
@@ -284,72 +342,86 @@ function Recibos() {
         </div>
       )}
 
-      {/* Lista detallada de recibos */}
+      {/* Lista de recibos del día */}
       <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-        <div style={{ background: '#1a1a2e', color: 'white', padding: '12px 18px', fontWeight: '600', fontSize: '13px', letterSpacing: '0.4px' }}>
-          REGISTRO DIARIO
+        <div style={{ background: '#1a1a2e', color: 'white', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontWeight: '600', fontSize: '13px', letterSpacing: '0.4px' }}>
+            RECIBOS DEL {formatDiaLabel(fechaSeleccionada).toUpperCase()}
+          </span>
+          <span style={{ fontSize: '12px', color: '#aaa' }}>{delDia.length} recibo{delDia.length !== 1 ? 's' : ''}</span>
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
               <th style={th}>Empresa</th>
-              <th style={th}>Fecha</th>
               <th style={{ ...th, textAlign: 'right' }}>Litros</th>
-              <th style={{ ...th, textAlign: 'right' }}>$/Litro total</th>
+              <th style={{ ...th, textAlign: 'right' }}>$/Litro</th>
               <th style={{ ...th, textAlign: 'right' }}>$/Trans.</th>
-              <th style={{ ...th, textAlign: 'right' }}>Valor transporte</th>
+              <th style={{ ...th, textAlign: 'right' }}>Valor trans.</th>
               <th style={{ ...th, textAlign: 'right', color: '#1b5e20' }}>Valor proveedor</th>
               <th style={th}>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {recibos
-              .slice()
-              .sort((a, b) => (a.fecha > b.fecha ? 1 : a.fecha < b.fecha ? -1 : 0))
-              .map((r, i) => {
-                const vTrans = (r.litrosRecibidos ?? 0) * (r.precioTransporte ?? 0)
-                const vProv  = (r.litrosRecibidos ?? 0) * ((r.precioLitro ?? 0) - (r.precioTransporte ?? 0))
-                return (
-                  <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0', background: editando === r.id ? '#f3f0ff' : i % 2 === 0 ? 'white' : '#fafafa' }}>
-                    <td style={{ ...td, fontWeight: '500' }}>
-                      {r.nombreRecibo}
-                      {r.soloTransporte && (
-                        <span style={{ marginLeft: '6px', fontSize: '11px', background: '#fff3e0', color: '#e65100', padding: '2px 6px', borderRadius: '4px' }}>
-                          solo trans.
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ ...td, color: '#666' }}>{r.fecha}</td>
-                    <td style={{ ...td, textAlign: 'right' }}>{fmtL(r.litrosRecibidos)} L</td>
-                    <td style={{ ...td, textAlign: 'right', color: '#666' }}>${fmt(r.precioLitro)}</td>
-                    <td style={{ ...td, textAlign: 'right', color: r.precioTransporte ? '#e65100' : '#ccc' }}>
-                      {r.precioTransporte ? `$${fmt(r.precioTransporte)}` : '—'}
-                    </td>
-                    <td style={{ ...td, textAlign: 'right', color: '#e65100' }}>
-                      {r.precioTransporte ? `$${fmt(vTrans)}` : '—'}
-                    </td>
-                    <td style={{ ...td, textAlign: 'right', fontWeight: '500', color: '#1b5e20' }}>
-                      ${fmt(r.precioTransporte ? vProv : (r.litrosRecibidos ?? 0) * (r.precioLitro ?? 0))}
-                    </td>
-                    <td style={{ ...td }}>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button onClick={() => iniciarEdicion(r)}
-                          style={{ background: '#e8f5e9', color: '#2e7d32', border: 'none', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                          Editar
-                        </button>
-                        <button onClick={() => eliminar(r.id)}
-                          style={{ background: '#ffebee', color: '#c62828', border: 'none', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            {recibos.length === 0 && (
-              <tr><td colSpan={8} style={{ padding: '32px', textAlign: 'center', color: '#999' }}>No hay recibos en esta quincena</td></tr>
+            {delDia.map((r, i) => {
+              const vTrans = (r.litrosRecibidos ?? 0) * (r.precioTransporte ?? 0)
+              const vProv  = (r.litrosRecibidos ?? 0) * ((r.precioLitro ?? 0) - (r.precioTransporte ?? 0))
+              return (
+                <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0', background: editando === r.id ? '#f3f0ff' : i % 2 === 0 ? 'white' : '#fafafa' }}>
+                  <td style={{ ...td, fontWeight: '500' }}>
+                    {r.nombreRecibo}
+                    {r.soloTransporte && (
+                      <span style={{ marginLeft: '6px', fontSize: '11px', background: '#fff3e0', color: '#e65100', padding: '2px 6px', borderRadius: '4px' }}>
+                        solo trans.
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ ...td, textAlign: 'right', fontWeight: '500' }}>{fmtL(r.litrosRecibidos)} L</td>
+                  <td style={{ ...td, textAlign: 'right', color: '#666' }}>${fmt(r.precioLitro)}</td>
+                  <td style={{ ...td, textAlign: 'right', color: r.precioTransporte ? '#e65100' : '#ccc' }}>
+                    {r.precioTransporte ? `$${fmt(r.precioTransporte)}` : '—'}
+                  </td>
+                  <td style={{ ...td, textAlign: 'right', color: '#e65100' }}>
+                    {r.precioTransporte ? `$${fmt(vTrans)}` : '—'}
+                  </td>
+                  <td style={{ ...td, textAlign: 'right', fontWeight: '500', color: '#1b5e20' }}>
+                    ${fmt(r.precioTransporte ? vProv : (r.litrosRecibidos ?? 0) * (r.precioLitro ?? 0))}
+                  </td>
+                  <td style={{ ...td }}>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button onClick={() => iniciarEdicion(r)}
+                        style={{ background: '#e8f5e9', color: '#2e7d32', border: 'none', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                        Editar
+                      </button>
+                      <button onClick={() => eliminar(r.id)}
+                        style={{ background: '#ffebee', color: '#c62828', border: 'none', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+            {delDia.length === 0 && (
+              <tr>
+                <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
+                  No hay recibos para este día.<br />
+                  <span style={{ fontSize: '13px' }}>Usa el botón <strong>+ Nuevo recibo</strong> para agregar.</span>
+                </td>
+              </tr>
             )}
           </tbody>
+          {delDia.length > 0 && (
+            <tfoot>
+              <tr style={{ background: '#f0fdf4', borderTop: '2px solid #c8e6c9' }}>
+                <td style={{ ...td, fontWeight: '600', color: '#1b5e20' }}>Total del día</td>
+                <td style={{ ...td, textAlign: 'right', fontWeight: '700', color: '#1b5e20', fontSize: '15px' }}>
+                  {fmtL(totalLitrosDia)} L
+                </td>
+                <td colSpan={5} style={td}></td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
     </div>
