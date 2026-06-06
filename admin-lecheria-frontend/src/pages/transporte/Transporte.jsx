@@ -507,11 +507,12 @@ function TablaCompleta({ vc }) {
                       {(vc.precioLechePorEmpresa?.[emp] ?? 0) > 0 ? fmt(vc.precioLechePorEmpresa[emp]) : '—'}
                     </td>
                   ))}
-                  {/* Precio de rinde del grupo */}
-                  <td style={{ ...tdS, textAlign: 'right', color: '#1b5e20', fontWeight: '700', fontSize: '11px', borderLeft: '2px solid #ddd' }}>
+                  {/* ENT vacío | REC vacío | RINDE = precio configurado */}
+                  <td style={{ borderLeft: '2px solid #ddd' }} />
+                  <td />
+                  <td style={{ ...tdS, textAlign: 'right', color: '#1b5e20', fontWeight: '700', fontSize: '11px', borderRight: '2px solid #ddd' }}>
                     {g.precioLecheRinde > 0 ? fmt(g.precioLecheRinde) : '—'}
                   </td>
-                  <td /><td style={{ borderRight: '2px solid #ddd' }} />
                 </Fragment>
               ))}
               {empsSinGrupo.map(emp => (
@@ -532,11 +533,12 @@ function TablaCompleta({ vc }) {
                       {(vc.totalLechePorEmpresa?.[emp] ?? 0) > 0 ? `$${fmt(vc.totalLechePorEmpresa[emp])}` : '—'}
                     </td>
                   ))}
-                  {/* Valor de rinde del grupo en dinero */}
-                  <td style={{ ...tdS, textAlign: 'right', color: '#1b5e20', fontWeight: '800', fontSize: '11px', borderLeft: '2px solid #ddd' }}>
+                  {/* ENT vacío | REC vacío | RINDE = valor en dinero */}
+                  <td style={{ borderLeft: '2px solid #ddd' }} />
+                  <td />
+                  <td style={{ ...tdS, textAlign: 'right', color: '#1b5e20', fontWeight: '800', fontSize: '11px', borderRight: '2px solid #ddd' }}>
                     {g.rindeValorDinero !== 0 ? `$${fmt(g.rindeValorDinero)}` : '—'}
                   </td>
-                  <td /><td style={{ borderRight: '2px solid #ddd' }} />
                 </Fragment>
               ))}
               {empsSinGrupo.map(emp => (
