@@ -10,6 +10,7 @@ import Recibos from './pages/recibos/Recibos'
 import ResumenQuincena from './pages/resumen/ResumenQuincena'
 import Transporte from './pages/transporte/Transporte'
 import Descuentos from './pages/descuentos/Descuentos'
+import Inicio from './pages/inicio/Inicio'
 
 function App() {
   return (
@@ -17,7 +18,7 @@ function App() {
     <OfflineBanner />
     <Layout>
       <Routes>
-        <Route path="/" element={<h1>Bienvenido</h1>} />
+        <Route path="/" element={<Inicio />} />
         <Route path="/proveedores" element={<Proveedores />} />
         <Route path="/rutas" element={<Rutas />} />
         <Route path="/conductores" element={<Conductores />} />
