@@ -11,7 +11,7 @@ function formatFecha(f) {
 }
 
 const COLORES = ['#0288d1', '#388e3c', '#e65100', '#6c63ff', '#c62828', '#00838f']
-const GRUPO_FORM_INIT = { nombre: '', tipoLeche: '', rutaIds: [], empresas: [] }
+const GRUPO_FORM_INIT = { nombre: '', tipoLeche: '', rutaIds: [], empresas: [], precioRinde: '' }
 
 export default function Transporte() {
   const [quincenas, setQuincenas]               = useState([])
@@ -69,7 +69,7 @@ export default function Transporte() {
   // ── CRUD grupos ──────────────────────────────────────────────────────────
   const abrirNuevo  = () => { setForm(GRUPO_FORM_INIT); setEmpresaInput(''); setModal('nuevo') }
   const abrirEditar = (g) => {
-    setForm({ id: g.id, nombre: g.nombre, tipoLeche: g.tipoLeche ?? '', rutaIds: [...g.rutaIds], empresas: [...g.empresas] })
+    setForm({ id: g.id, nombre: g.nombre, tipoLeche: g.tipoLeche ?? '', rutaIds: [...g.rutaIds], empresas: [...g.empresas], precioRinde: g.precioRinde ?? '' })
     setEmpresaInput(''); setModal('editar')
   }
   const toggleRuta = (id) => setForm(f => ({
@@ -85,9 +85,13 @@ export default function Transporte() {
   const guardarGrupo = async () => {
     if (!form.nombre.trim()) return
     setGuardando(true)
+    const payload = {
+      ...form,
+      precioRinde: form.precioRinde !== '' ? parseFloat(form.precioRinde) : null,
+    }
     try {
-      if (form.id) await api.put(`/grupos-rinde/${form.id}`, form)
-      else await api.post('/grupos-rinde', form)
+      if (form.id) await api.put(`/grupos-rinde/${form.id}`, payload)
+      else await api.post('/grupos-rinde', payload)
       const r = await api.get('/grupos-rinde')
       setGrupos(r.data); setModal(null)
       if (quincenaId) cargarResumen(quincenaId, r.data)
@@ -188,6 +192,21 @@ export default function Transporte() {
               <option value="vaca">Vaca</option>
               <option value="bufala">Búfala</option>
             </select>
+
+            <label style={lbl}>$/litro del rinde — precio que paga la empresa</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+              <input
+                value={form.precioRinde}
+                onChange={e => setForm(f => ({ ...f, precioRinde: e.target.value }))}
+                type="number" step="1" placeholder="Ej: 1925"
+                style={{ ...inp, marginBottom: 0, flex: 1 }}
+              />
+              {form.precioRinde && (
+                <div style={{ background: '#e8f5e9', borderRadius: '8px', padding: '8px 12px', fontSize: '13px', color: '#1b5e20', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                  ${Number(form.precioRinde).toLocaleString('es-CO')}/L
+                </div>
+              )}
+            </div>
 
             <label style={lbl}>Rutas de proveedores (litros recogidos)</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>

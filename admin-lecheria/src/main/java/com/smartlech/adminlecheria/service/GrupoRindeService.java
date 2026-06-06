@@ -378,8 +378,9 @@ public class GrupoRindeService {
             gc.setTotalRinde(a[0] - a[1]);
             gc.setTotalValorTransporte(a[2]);
             gc.setTotalValorProveedor(a[3]);
-            // Precio promedio por litro (completo) = (trans + proveedor) / entregado
-            double precioRinde = a[0] > 0 ? (a[2] + a[3]) / a[0] : 0;
+            // Precio configurado en el grupo (lo que paga la empresa por litro de rinde)
+            GrupoRinde grupoEntidad = grupos.get(i);
+            double precioRinde = grupoEntidad.getPrecioRinde() != null ? grupoEntidad.getPrecioRinde() : 0;
             gc.setPrecioLecheRinde(precioRinde);
             double rindeVal = (a[0] - a[1]) * precioRinde;
             gc.setRindeValorDinero(rindeVal);

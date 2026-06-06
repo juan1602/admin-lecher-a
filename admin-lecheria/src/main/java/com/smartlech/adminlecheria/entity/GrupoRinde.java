@@ -19,6 +19,10 @@ public class GrupoRinde {
     @Column(name = "tipo_leche")
     private String tipoLeche;
 
+    // Precio por litro que paga la empresa (para valorizar el rinde en dinero)
+    @Column(name = "precio_rinde")
+    private Double precioRinde;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "grupo_rinde_rutas", joinColumns = @JoinColumn(name = "grupo_id"))
     @Column(name = "ruta_id")
@@ -37,6 +41,9 @@ public class GrupoRinde {
 
     public String getTipoLeche() { return tipoLeche; }
     public void setTipoLeche(String tipoLeche) { this.tipoLeche = tipoLeche; }
+
+    public Double getPrecioRinde() { return precioRinde; }
+    public void setPrecioRinde(Double precioRinde) { this.precioRinde = precioRinde; }
 
     public List<Long> getRutaIds() { return rutaIds; }
     public void setRutaIds(List<Long> rutaIds) { this.rutaIds = rutaIds; }
