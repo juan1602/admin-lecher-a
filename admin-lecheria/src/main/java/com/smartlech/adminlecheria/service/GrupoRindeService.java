@@ -261,7 +261,16 @@ public class GrupoRindeService {
         for (GrupoRinde g : grupos) acc.put(g.getId(), new double[4]);
 
         Map<String, Double> totalLitrosPorEmpresa = new LinkedHashMap<>();
-        for (String emp : todasEmpresasOrdenadas) totalLitrosPorEmpresa.put(emp, 0.0);
+        // Acumuladores financieros por empresa (inicializar junto con litros)
+        Map<String, double[]> accEmp   = new LinkedHashMap<>(); // [totalTrans, totalLeche, totalValor]
+        Map<String, Double>   precioTransUlt  = new LinkedHashMap<>();
+        Map<String, Double>   precioLecheUlt  = new LinkedHashMap<>();
+        for (String emp : todasEmpresasOrdenadas) {
+            totalLitrosPorEmpresa.put(emp, 0.0);
+            accEmp.put(emp, new double[3]);
+            precioTransUlt.put(emp, 0.0);
+            precioLecheUlt.put(emp, 0.0);
+        }
 
         // ── Construir días ────────────────────────────────────────────────────
         List<DiaCompletoDTO> dias = new ArrayList<>();
@@ -275,12 +284,24 @@ public class GrupoRindeService {
             Map<String, Double> litrosDia = new LinkedHashMap<>();
             for (String emp : todasEmpresasOrdenadas) litrosDia.put(emp, 0.0);
             for (ReciboEmpresa r : recibosDia) {
-                if (r.getNombreRecibo() != null) {
-                    String canonical = normToCanonical.get(r.getNombreRecibo().trim().toLowerCase());
-                    if (canonical != null && r.getLitrosRecibidos() != null) {
-                        litrosDia.merge(canonical, r.getLitrosRecibidos(), Double::sum);
-                        totalLitrosPorEmpresa.merge(canonical, r.getLitrosRecibidos(), Double::sum);
-                    }
+                if (r.getNombreRecibo() == null) continue;
+                String canonical = normToCanonical.get(r.getNombreRecibo().trim().toLowerCase());
+                if (canonical == null) continue;
+                double litros = r.getLitrosRecibidos() != null ? r.getLitrosRecibidos() : 0;
+                double pt = r.getPrecioTransporte() != null ? r.getPrecioTransporte() : 0;
+                double pl = r.getPrecioLitro()      != null ? r.getPrecioLitro()      : 0;
+                // litros por empresa (tabla diaria y totales)
+                litrosDia.merge(canonical, litros, Double::sum);
+                totalLitrosPorEmpresa.merge(canonical, litros, Double::sum);
+                // precios (último visto)
+                if (pt > 0) precioTransUlt.put(canonical, pt);
+                if (pl > 0) precioLecheUlt.put(canonical, pl - pt);
+                // totales financieros
+                double[] ae = accEmp.get(canonical);
+                if (ae != null) {
+                    ae[0] += litros * pt;
+                    ae[1] += litros * (pl - pt);
+                    ae[2] += litros * pl;
                 }
             }
 
@@ -335,31 +356,6 @@ public class GrupoRindeService {
             dias.add(dia);
 
             fecha = fecha.plusDays(1);
-        }
-
-        // ── Datos financieros por empresa ─────────────────────────────────────
-        // acc2: [totalTrans, totalLeche (a proveedor), totalValor (precio completo)]
-        Map<String, double[]> accEmp = new LinkedHashMap<>();
-        Map<String, Double> precioTransUlt = new LinkedHashMap<>();
-        Map<String, Double> precioLecheUlt = new LinkedHashMap<>();
-        for (String emp : todasEmpresasOrdenadas) {
-            accEmp.put(emp, new double[3]);
-            precioTransUlt.put(emp, 0.0);
-            precioLecheUlt.put(emp, 0.0);
-        }
-        for (ReciboEmpresa r : todosRecibos) {
-            if (r.getNombreRecibo() == null) continue;
-            String canonical = normToCanonical.get(r.getNombreRecibo().trim().toLowerCase());
-            if (canonical == null) continue;
-            double litros = r.getLitrosRecibidos() != null ? r.getLitrosRecibidos() : 0;
-            double pt = r.getPrecioTransporte() != null ? r.getPrecioTransporte() : 0;
-            double pl = r.getPrecioLitro() != null ? r.getPrecioLitro() : 0;
-            if (pt > 0) precioTransUlt.put(canonical, pt);
-            if (pl > 0) precioLecheUlt.put(canonical, pl - pt); // precio a proveedor
-            double[] ae = accEmp.get(canonical);
-            ae[0] += litros * pt;            // totalTrans
-            ae[1] += litros * (pl - pt);     // totalLeche (a proveedor)
-            ae[2] += litros * pl;            // totalValor (precio completo)
         }
 
         Map<String, Double> totalTransPorEmp  = new LinkedHashMap<>();
