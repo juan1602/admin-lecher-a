@@ -1,6 +1,7 @@
 package com.smartlech.adminlecheria.controller;
 
 import com.smartlech.adminlecheria.dto.RindeGrupoDTO;
+import com.smartlech.adminlecheria.dto.TransporteCompletoDTO;
 import com.smartlech.adminlecheria.entity.GrupoRinde;
 import com.smartlech.adminlecheria.service.GrupoRindeService;
 import lombok.RequiredArgsConstructor;
@@ -39,5 +40,10 @@ public class GrupoRindeController {
     @GetMapping("/transporte/{quincenaId}")
     public List<RindeGrupoDTO> transporte(@PathVariable Long quincenaId) {
         return grupoRindeService.calcularRindePorGrupo(quincenaId);
+    }
+
+    @GetMapping("/vista-completa/{quincenaId}")
+    public TransporteCompletoDTO vistaCompleta(@PathVariable Long quincenaId) {
+        return grupoRindeService.calcularVistaCompleta(quincenaId);
     }
 }

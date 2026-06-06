@@ -21,7 +21,7 @@ public class ReciboEmpresaController {
         return reciboEmpresaService.listarPorQuincena(quincenaId);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     public ResponseEntity<ReciboEmpresa> buscarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(reciboEmpresaService.buscarPorId(id));
     }

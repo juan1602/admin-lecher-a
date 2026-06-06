@@ -16,6 +16,10 @@ import com.smartlech.adminlecheria.repository.RutaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import com.smartlech.adminlecheria.dto.DiaCompletoDTO;
+import com.smartlech.adminlecheria.dto.DiaGrupoDTO;
+import com.smartlech.adminlecheria.dto.GrupoCompactoDTO;
+import com.smartlech.adminlecheria.dto.TransporteCompletoDTO;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -178,6 +182,182 @@ public class GrupoRindeService {
             result.add(dto);
         }
 
+        return result;
+    }
+
+    public TransporteCompletoDTO calcularVistaCompleta(Long quincenaId) {
+        Quincena quincena = quincenaRepository.findById(quincenaId)
+                .orElseThrow(() -> new RuntimeException("Quincena no encontrada: " + quincenaId));
+
+        List<GrupoRinde> grupos = grupoRindeRepository.findAll();
+        List<Recoleccion> todasRecs = recoleccionRepository.findByQuincenaId(quincenaId);
+        List<ReciboEmpresa> todosRecibos = reciboEmpresaRepository.findByQuincenaId(quincenaId);
+
+        // ── Lista ordenada de empresas ────────────────────────────────────────
+        // Primero las configuradas en grupos (en orden de grupo), luego las demás
+        Set<String> yaIncluidas = new LinkedHashSet<>();
+        List<String> todasEmpresasOrdenadas = new ArrayList<>();
+
+        for (GrupoRinde g : grupos) {
+            for (String emp : g.getEmpresas()) {
+                String norm = emp.trim().toLowerCase();
+                if (yaIncluidas.add(norm)) todasEmpresasOrdenadas.add(emp.trim());
+            }
+        }
+        for (ReciboEmpresa r : todosRecibos) {
+            if (r.getNombreRecibo() != null) {
+                String norm = r.getNombreRecibo().trim().toLowerCase();
+                if (yaIncluidas.add(norm)) todasEmpresasOrdenadas.add(r.getNombreRecibo().trim());
+            }
+        }
+
+        // Mapa normalized → nombre canónico
+        Map<String, String> normToCanonical = new LinkedHashMap<>();
+        for (String emp : todasEmpresasOrdenadas) normToCanonical.put(emp.toLowerCase(), emp);
+
+        // ── Metadata de grupos ────────────────────────────────────────────────
+        List<GrupoCompactoDTO> gruposCompactos = new ArrayList<>();
+        Map<Long, Set<String>> grupoEmpNorm = new LinkedHashMap<>();
+        Map<Long, Set<Long>> grupoRutaIdsMap = new LinkedHashMap<>();
+        Map<Long, String> grupoTipoLecheMap = new LinkedHashMap<>();
+
+        for (GrupoRinde g : grupos) {
+            Set<String> empNorm = g.getEmpresas().stream()
+                    .map(e -> e.trim().toLowerCase()).collect(Collectors.toCollection(LinkedHashSet::new));
+            grupoEmpNorm.put(g.getId(), empNorm);
+            grupoRutaIdsMap.put(g.getId(), new HashSet<>(g.getRutaIds()));
+            grupoTipoLecheMap.put(g.getId(), g.getTipoLeche());
+
+            GrupoCompactoDTO gc = new GrupoCompactoDTO();
+            gc.setGrupoId(g.getId());
+            gc.setNombre(g.getNombre());
+            gc.setTipoLeche(g.getTipoLeche());
+            gc.setEmpresasConfig(new ArrayList<>(g.getEmpresas()));
+            gruposCompactos.add(gc);
+        }
+
+        // ── Recolecciones por día y grupo ─────────────────────────────────────
+        Map<LocalDate, Map<Long, Double>> recogidosDiaGrupo = new HashMap<>();
+        for (Recoleccion rec : todasRecs) {
+            for (GrupoRinde g : grupos) {
+                Set<Long> rutaIds = grupoRutaIdsMap.get(g.getId());
+                String tl = grupoTipoLecheMap.get(g.getId());
+                boolean pertRuta = rutaIds.isEmpty() || rutaIds.contains(rec.getRuta().getId());
+                boolean pertLeche = tl == null || tl.isBlank() ||
+                        tl.equalsIgnoreCase(rec.getProveedor().getTipoLeche() != null ? rec.getProveedor().getTipoLeche() : "");
+                if (pertRuta && pertLeche) {
+                    recogidosDiaGrupo.computeIfAbsent(rec.getFecha(), d -> new HashMap<>())
+                            .merge(g.getId(), rec.getLitrosRecolectados(), Double::sum);
+                }
+            }
+        }
+
+        // ── Recibos por día ───────────────────────────────────────────────────
+        Map<LocalDate, List<ReciboEmpresa>> recibosPorDia = todosRecibos.stream()
+                .collect(Collectors.groupingBy(ReciboEmpresa::getFecha));
+
+        // ── Acumuladores de totales por grupo ─────────────────────────────────
+        Map<Long, double[]> acc = new HashMap<>(); // [entregado, recogido, valorTransporte, valorProveedor]
+        for (GrupoRinde g : grupos) acc.put(g.getId(), new double[4]);
+
+        Map<String, Double> totalLitrosPorEmpresa = new LinkedHashMap<>();
+        for (String emp : todasEmpresasOrdenadas) totalLitrosPorEmpresa.put(emp, 0.0);
+
+        // ── Construir días ────────────────────────────────────────────────────
+        List<DiaCompletoDTO> dias = new ArrayList<>();
+        double totalRinde = 0;
+
+        LocalDate fecha = quincena.getFechaInicio();
+        while (!fecha.isAfter(quincena.getFechaFin())) {
+            List<ReciboEmpresa> recibosDia = recibosPorDia.getOrDefault(fecha, Collections.emptyList());
+
+            // Litros de TODOS los recibos de ese día por empresa
+            Map<String, Double> litrosDia = new LinkedHashMap<>();
+            for (String emp : todasEmpresasOrdenadas) litrosDia.put(emp, 0.0);
+            for (ReciboEmpresa r : recibosDia) {
+                if (r.getNombreRecibo() != null) {
+                    String canonical = normToCanonical.get(r.getNombreRecibo().trim().toLowerCase());
+                    if (canonical != null && r.getLitrosRecibidos() != null) {
+                        litrosDia.merge(canonical, r.getLitrosRecibidos(), Double::sum);
+                        totalLitrosPorEmpresa.merge(canonical, r.getLitrosRecibidos(), Double::sum);
+                    }
+                }
+            }
+
+            // Datos por grupo
+            List<DiaGrupoDTO> gruposDia = new ArrayList<>();
+            double rindeTotalDia = 0;
+
+            for (GrupoRinde g : grupos) {
+                Set<String> empNorm = grupoEmpNorm.get(g.getId());
+
+                double entregado = recibosDia.stream()
+                        .filter(r -> r.getNombreRecibo() != null
+                                && empNorm.contains(r.getNombreRecibo().trim().toLowerCase())
+                                && (r.getSoloTransporte() == null || !r.getSoloTransporte()))
+                        .mapToDouble(r -> r.getLitrosRecibidos() != null ? r.getLitrosRecibidos() : 0)
+                        .sum();
+
+                double recogido = recogidosDiaGrupo
+                        .getOrDefault(fecha, Collections.emptyMap())
+                        .getOrDefault(g.getId(), 0.0);
+
+                double rinde = entregado - recogido;
+                rindeTotalDia += rinde;
+
+                double[] a = acc.get(g.getId());
+                a[0] += entregado;
+                a[1] += recogido;
+                for (ReciboEmpresa r : recibosDia) {
+                    if (r.getNombreRecibo() != null && empNorm.contains(r.getNombreRecibo().trim().toLowerCase())) {
+                        double pt = r.getPrecioTransporte() != null ? r.getPrecioTransporte() : 0;
+                        double pl = r.getPrecioLitro() != null ? r.getPrecioLitro() : 0;
+                        double litros = r.getLitrosRecibidos() != null ? r.getLitrosRecibidos() : 0;
+                        a[2] += litros * pt;
+                        a[3] += litros * (pl - pt);
+                    }
+                }
+
+                DiaGrupoDTO dg = new DiaGrupoDTO();
+                dg.setGrupoId(g.getId());
+                dg.setEntregado(entregado);
+                dg.setRecogido(recogido);
+                dg.setRinde(rinde);
+                gruposDia.add(dg);
+            }
+            totalRinde += rindeTotalDia;
+
+            DiaCompletoDTO dia = new DiaCompletoDTO();
+            dia.setFecha(fecha.toString());
+            dia.setLitrosPorEmpresa(litrosDia);
+            dia.setGrupos(gruposDia);
+            dia.setRindeTotal(rindeTotalDia);
+            dias.add(dia);
+
+            fecha = fecha.plusDays(1);
+        }
+
+        // Totales por grupo
+        for (int i = 0; i < grupos.size(); i++) {
+            GrupoCompactoDTO gc = gruposCompactos.get(i);
+            double[] a = acc.get(gc.getGrupoId());
+            gc.setTotalEntregado(a[0]);
+            gc.setTotalRecogido(a[1]);
+            gc.setTotalRinde(a[0] - a[1]);
+            gc.setTotalValorTransporte(a[2]);
+            gc.setTotalValorProveedor(a[3]);
+        }
+
+        TransporteCompletoDTO result = new TransporteCompletoDTO();
+        result.setQuincenaId(quincenaId);
+        result.setTextoQuincena(quincena.getTextoQuincena());
+        result.setFechaInicio(quincena.getFechaInicio().toString());
+        result.setFechaFin(quincena.getFechaFin().toString());
+        result.setTodasEmpresas(todasEmpresasOrdenadas);
+        result.setTotalLitrosPorEmpresa(totalLitrosPorEmpresa);
+        result.setGrupos(gruposCompactos);
+        result.setDias(dias);
+        result.setRindeTotal(totalRinde);
         return result;
     }
 }
