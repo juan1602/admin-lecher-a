@@ -251,6 +251,40 @@ npm run dev
 - Deploy en Render (backend) + Vercel (frontend) + Neon (PostgreSQL prod)
 - Sin autenticación (Spring Security excluida)
 - CORS wildcard (`*`) para todos los orígenes
-- Archivos con cambios pendientes recientes:
-  - `admin-lecheria-frontend/src/pages/transporte/Transporte.jsx`
-  - `admin-lecheria/src/main/java/com/smartlech/adminlecheria/service/ReciboEmpresaService.java`
+
+## Cambios recientes (sesión junio 2026)
+
+### Inicio rediseñado
+- Dashboard con barra de progreso de quincena y días restantes
+- KPIs: litros hoy, total quincena, estimado a pagar ($1.900/L ref.), proveedores activos
+- Gráfica de barras CSS por día (sin librerías)
+- `App.jsx` ya importa `Inicio` correctamente en la ruta `/`
+
+### Grupos de Rinde (feature nueva)
+Nueva entidad `GrupoRinde` con tablas: `grupos_rinde`, `grupo_rinde_rutas`, `grupo_rinde_empresas`
+
+**Campos:** nombre, tipoLeche (vaca|bufala|null=todos), rutaIds (List<Long>), empresas (List<String>)
+
+**Endpoints:** `GET|POST|PUT|DELETE /api/grupos-rinde`, `GET /api/grupos-rinde/vista-completa/{quincenaId}`
+
+**Lógica:** Cada grupo define qué rutas de proveedores suman al "recogido" y qué empresas suman al "entregado". El rinde = entregado - recogido, separado por grupo.
+
+**Nuevos archivos backend:**
+- `entity/GrupoRinde.java`
+- `repository/GrupoRindeRepository.java`
+- `service/GrupoRindeService.java` — métodos: `listar`, `guardar`, `eliminar`, `calcularRindePorGrupo`, `calcularVistaCompleta`
+- `controller/GrupoRindeController.java`
+- `dto/GrupoCompactoDTO.java`, `DiaCompletoDTO.java`, `DiaGrupoDTO.java`, `TransporteCompletoDTO.java`, `RindeGrupoDTO.java`
+
+**Empresas distintas:** `GET /api/recibos/empresas` devuelve nombres únicos de recibos (fix 400: `/{id:[0-9]+}` en `ReciboEmpresaController`)
+
+### Transporte rediseñado
+- Con grupos configurados: tabla unificada estilo Excel con TODAS las empresas como columnas + columnas ENT/REC/RINDE por grupo + RINDE TOTAL
+- Las empresas configuradas en un grupo se resaltan con el color del grupo
+- Empresas no asignadas a ningún grupo aparecen en sección "Otros recibos"
+- Sin grupos: vista global anterior (sin cambios)
+- Panel "⚙ Grupos de Rinde" colapsable con CRUD de grupos
+- Modal de grupo: nombre, tipoLeche, rutas (checkboxes), empresas (chips desde recibos existentes + campo para nueva)
+
+### Tip IDE
+Si el Java Language Server muestra "Duplicate method" sin que exista duplicado real → `Ctrl+Shift+P` → "Java: Clean Java Language Server Workspace"

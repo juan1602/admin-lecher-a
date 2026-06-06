@@ -337,7 +337,43 @@ public class GrupoRindeService {
             fecha = fecha.plusDays(1);
         }
 
-        // Totales por grupo
+        // ── Datos financieros por empresa ─────────────────────────────────────
+        // acc2: [totalTrans, totalLeche (a proveedor), totalValor (precio completo)]
+        Map<String, double[]> accEmp = new LinkedHashMap<>();
+        Map<String, Double> precioTransUlt = new LinkedHashMap<>();
+        Map<String, Double> precioLecheUlt = new LinkedHashMap<>();
+        for (String emp : todasEmpresasOrdenadas) {
+            accEmp.put(emp, new double[3]);
+            precioTransUlt.put(emp, 0.0);
+            precioLecheUlt.put(emp, 0.0);
+        }
+        for (ReciboEmpresa r : todosRecibos) {
+            if (r.getNombreRecibo() == null) continue;
+            String canonical = normToCanonical.get(r.getNombreRecibo().trim().toLowerCase());
+            if (canonical == null) continue;
+            double litros = r.getLitrosRecibidos() != null ? r.getLitrosRecibidos() : 0;
+            double pt = r.getPrecioTransporte() != null ? r.getPrecioTransporte() : 0;
+            double pl = r.getPrecioLitro() != null ? r.getPrecioLitro() : 0;
+            if (pt > 0) precioTransUlt.put(canonical, pt);
+            if (pl > 0) precioLecheUlt.put(canonical, pl - pt); // precio a proveedor
+            double[] ae = accEmp.get(canonical);
+            ae[0] += litros * pt;            // totalTrans
+            ae[1] += litros * (pl - pt);     // totalLeche (a proveedor)
+            ae[2] += litros * pl;            // totalValor (precio completo)
+        }
+
+        Map<String, Double> totalTransPorEmp  = new LinkedHashMap<>();
+        Map<String, Double> totalLechePorEmp  = new LinkedHashMap<>();
+        Map<String, Double> totalValorPorEmp  = new LinkedHashMap<>();
+        for (String emp : todasEmpresasOrdenadas) {
+            double[] ae = accEmp.get(emp);
+            totalTransPorEmp.put(emp,  ae[0]);
+            totalLechePorEmp.put(emp,  ae[1]);
+            totalValorPorEmp.put(emp,  ae[2]);
+        }
+
+        // ── Totales por grupo ──────────────────────────────────────────────────
+        double rindeValorTotal = 0;
         for (int i = 0; i < grupos.size(); i++) {
             GrupoCompactoDTO gc = gruposCompactos.get(i);
             double[] a = acc.get(gc.getGrupoId());
@@ -346,7 +382,17 @@ public class GrupoRindeService {
             gc.setTotalRinde(a[0] - a[1]);
             gc.setTotalValorTransporte(a[2]);
             gc.setTotalValorProveedor(a[3]);
+            // Precio promedio por litro (completo) = (trans + proveedor) / entregado
+            double precioRinde = a[0] > 0 ? (a[2] + a[3]) / a[0] : 0;
+            gc.setPrecioLecheRinde(precioRinde);
+            double rindeVal = (a[0] - a[1]) * precioRinde;
+            gc.setRindeValorDinero(rindeVal);
+            rindeValorTotal += rindeVal;
         }
+
+        // ── Totales globales ───────────────────────────────────────────────────
+        double transporteTotal = totalTransPorEmp.values().stream().mapToDouble(Double::doubleValue).sum();
+        double pagoTotal       = totalValorPorEmp.values().stream().mapToDouble(Double::doubleValue).sum();
 
         TransporteCompletoDTO result = new TransporteCompletoDTO();
         result.setQuincenaId(quincenaId);
@@ -355,6 +401,15 @@ public class GrupoRindeService {
         result.setFechaFin(quincena.getFechaFin().toString());
         result.setTodasEmpresas(todasEmpresasOrdenadas);
         result.setTotalLitrosPorEmpresa(totalLitrosPorEmpresa);
+        result.setPrecioTransportePorEmpresa(precioTransUlt);
+        result.setTotalTransportePorEmpresa(totalTransPorEmp);
+        result.setPrecioLechePorEmpresa(precioLecheUlt);
+        result.setTotalLechePorEmpresa(totalLechePorEmp);
+        result.setTotalValorPorEmpresa(totalValorPorEmp);
+        result.setTransporteTotal(transporteTotal);
+        result.setRindeValorTotal(rindeValorTotal);
+        result.setPagoTotal(pagoTotal);
+        result.setRindeTransporteTotal(transporteTotal + rindeValorTotal);
         result.setGrupos(gruposCompactos);
         result.setDias(dias);
         result.setRindeTotal(totalRinde);

@@ -415,35 +415,151 @@ function TablaCompleta({ vc }) {
             })}
           </tbody>
 
-          {/* Footer totales */}
+          {/* Footer */}
           <tfoot>
-            <tr style={{ background: '#1a1a2e', fontWeight: '700' }}>
-              <td style={{ ...tdS, textAlign: 'center', color: 'white', borderRight: '2px solid #333' }}>TOTAL</td>
+            {/* TOTAL LITROS */}
+            <tr style={{ background: '#fff9c4', fontWeight: '700', borderTop: '3px solid #ddd' }}>
+              <td style={{ ...tdS, fontWeight: '800', color: '#333', borderRight: '2px solid #ddd' }}>TOTAL L.</td>
+              {grupos.map((g, gi) => (
+                <Fragment key={g.grupoId}>
+                  {empsPorGrupo[gi].map(emp => (
+                    <td key={emp} style={{ ...tdS, textAlign: 'right', color: '#333' }}>{fmtL(totalLitrosPorEmpresa?.[emp] ?? 0)}</td>
+                  ))}
+                  <td style={{ ...tdS, textAlign: 'right', color: '#2e7d32', fontWeight: '800', borderLeft: '2px solid #ddd' }}>{fmtL(g.totalEntregado)}</td>
+                  <td style={{ ...tdS, textAlign: 'right', color: '#1565c0', fontWeight: '800' }}>{fmtL(g.totalRecogido)}</td>
+                  <td style={{ ...tdS, textAlign: 'right', color: g.totalRinde < 0 ? '#c62828' : '#e65100', fontWeight: '800', borderRight: '2px solid #ddd' }}>{fmtL(g.totalRinde)}</td>
+                </Fragment>
+              ))}
+              {empsSinGrupo.map(emp => <td key={emp} style={{ ...tdS, textAlign: 'right' }}>{fmtL(totalLitrosPorEmpresa?.[emp] ?? 0)}</td>)}
+              <td style={{ ...tdS, textAlign: 'right', color: rindeTotal < 0 ? '#c62828' : '#e65100', fontWeight: '800', borderLeft: '3px solid #ddd' }}>{fmtL(rindeTotal)}</td>
+            </tr>
 
-              {grupos.map((g, gi) => {
-                const color = COLORES[gi % COLORES.length]
-                return (
-                  <Fragment key={g.grupoId}>
-                    {empsPorGrupo[gi].map(emp => (
-                      <td key={emp} style={{ ...tdS, textAlign: 'right', color: '#ccc' }}>
-                        {fmtL(totalLitrosPorEmpresa?.[emp] ?? 0)}
-                      </td>
-                    ))}
-                    <td style={{ ...tdS, textAlign: 'right', color: '#a5d6a7', borderLeft: `2px solid ${color}50` }}>{fmtL(g.totalEntregado)}</td>
-                    <td style={{ ...tdS, textAlign: 'right', color: '#90caf9' }}>{fmtL(g.totalRecogido)}</td>
-                    <td style={{ ...tdS, textAlign: 'right', color: g.totalRinde < 0 ? '#ef9a9a' : '#ffe082', fontSize: '14px', borderRight: '2px solid #333' }}>{fmtL(g.totalRinde)}</td>
-                  </Fragment>
-                )
-              })}
-
+            {/* PRECIO TRANS */}
+            <tr style={{ background: '#e3f2fd' }}>
+              <td style={{ ...tdS, fontWeight: '700', color: '#1565c0', borderRight: '2px solid #ddd', fontSize: '11px' }}>$/TRANS</td>
+              {grupos.map((g, gi) => (
+                <Fragment key={g.grupoId}>
+                  {empsPorGrupo[gi].map(emp => (
+                    <td key={emp} style={{ ...tdS, textAlign: 'right', color: '#1565c0', fontSize: '11px' }}>
+                      {(vc.precioTransportePorEmpresa?.[emp] ?? 0) > 0 ? fmt(vc.precioTransportePorEmpresa[emp]) : '—'}
+                    </td>
+                  ))}
+                  <td style={{ ...tdS, borderLeft: '2px solid #ddd' }} /><td /><td style={{ borderRight: '2px solid #ddd' }} />
+                </Fragment>
+              ))}
               {empsSinGrupo.map(emp => (
-                <td key={emp} style={{ ...tdS, textAlign: 'right', color: '#ccc' }}>
-                  {fmtL(totalLitrosPorEmpresa?.[emp] ?? 0)}
+                <td key={emp} style={{ ...tdS, textAlign: 'right', color: '#1565c0', fontSize: '11px' }}>
+                  {(vc.precioTransportePorEmpresa?.[emp] ?? 0) > 0 ? fmt(vc.precioTransportePorEmpresa[emp]) : '—'}
                 </td>
               ))}
+              <td style={{ borderLeft: '3px solid #ddd' }} />
+            </tr>
 
-              <td style={{ ...tdS, textAlign: 'right', color: rindeTotal < 0 ? '#ef9a9a' : '#a5d6a7', fontSize: '15px', borderLeft: '3px solid #333' }}>
-                {fmtL(rindeTotal)}
+            {/* TOTAL TRANS */}
+            <tr style={{ background: '#bbdefb' }}>
+              <td style={{ ...tdS, fontWeight: '700', color: '#1565c0', borderRight: '2px solid #ddd', fontSize: '11px' }}>TOTAL TRANS</td>
+              {grupos.map((g, gi) => (
+                <Fragment key={g.grupoId}>
+                  {empsPorGrupo[gi].map(emp => (
+                    <td key={emp} style={{ ...tdS, textAlign: 'right', color: '#0d47a1', fontWeight: '600', fontSize: '11px' }}>
+                      {(vc.totalTransportePorEmpresa?.[emp] ?? 0) > 0 ? `$${fmt(vc.totalTransportePorEmpresa[emp])}` : '—'}
+                    </td>
+                  ))}
+                  <td style={{ ...tdS, borderLeft: '2px solid #ddd' }} /><td /><td style={{ borderRight: '2px solid #ddd' }} />
+                </Fragment>
+              ))}
+              {empsSinGrupo.map(emp => (
+                <td key={emp} style={{ ...tdS, textAlign: 'right', color: '#0d47a1', fontWeight: '600', fontSize: '11px' }}>
+                  {(vc.totalTransportePorEmpresa?.[emp] ?? 0) > 0 ? `$${fmt(vc.totalTransportePorEmpresa[emp])}` : '—'}
+                </td>
+              ))}
+              <td style={{ ...tdS, textAlign: 'right', fontWeight: '800', color: '#0d47a1', borderLeft: '3px solid #ddd', fontSize: '12px' }}>
+                TRANS: ${fmt(vc.transporteTotal)}
+              </td>
+            </tr>
+
+            {/* PRECIO LECHE */}
+            <tr style={{ background: '#e8f5e9' }}>
+              <td style={{ ...tdS, fontWeight: '700', color: '#2e7d32', borderRight: '2px solid #ddd', fontSize: '11px' }}>$/LECHE</td>
+              {grupos.map((g, gi) => (
+                <Fragment key={g.grupoId}>
+                  {empsPorGrupo[gi].map(emp => (
+                    <td key={emp} style={{ ...tdS, textAlign: 'right', color: '#2e7d32', fontSize: '11px' }}>
+                      {(vc.precioLechePorEmpresa?.[emp] ?? 0) > 0 ? fmt(vc.precioLechePorEmpresa[emp]) : '—'}
+                    </td>
+                  ))}
+                  {/* Precio de rinde del grupo */}
+                  <td style={{ ...tdS, textAlign: 'right', color: '#1b5e20', fontWeight: '700', fontSize: '11px', borderLeft: '2px solid #ddd' }}>
+                    {g.precioLecheRinde > 0 ? fmt(g.precioLecheRinde) : '—'}
+                  </td>
+                  <td /><td style={{ borderRight: '2px solid #ddd' }} />
+                </Fragment>
+              ))}
+              {empsSinGrupo.map(emp => (
+                <td key={emp} style={{ ...tdS, textAlign: 'right', color: '#2e7d32', fontSize: '11px' }}>
+                  {(vc.precioLechePorEmpresa?.[emp] ?? 0) > 0 ? fmt(vc.precioLechePorEmpresa[emp]) : '—'}
+                </td>
+              ))}
+              <td style={{ borderLeft: '3px solid #ddd' }} />
+            </tr>
+
+            {/* TOTAL LECHE */}
+            <tr style={{ background: '#c8e6c9' }}>
+              <td style={{ ...tdS, fontWeight: '700', color: '#1b5e20', borderRight: '2px solid #ddd', fontSize: '11px' }}>TOTAL LECHE</td>
+              {grupos.map((g, gi) => (
+                <Fragment key={g.grupoId}>
+                  {empsPorGrupo[gi].map(emp => (
+                    <td key={emp} style={{ ...tdS, textAlign: 'right', color: '#1b5e20', fontWeight: '600', fontSize: '11px' }}>
+                      {(vc.totalLechePorEmpresa?.[emp] ?? 0) > 0 ? `$${fmt(vc.totalLechePorEmpresa[emp])}` : '—'}
+                    </td>
+                  ))}
+                  {/* Valor de rinde del grupo en dinero */}
+                  <td style={{ ...tdS, textAlign: 'right', color: '#1b5e20', fontWeight: '800', fontSize: '11px', borderLeft: '2px solid #ddd' }}>
+                    {g.rindeValorDinero !== 0 ? `$${fmt(g.rindeValorDinero)}` : '—'}
+                  </td>
+                  <td /><td style={{ borderRight: '2px solid #ddd' }} />
+                </Fragment>
+              ))}
+              {empsSinGrupo.map(emp => (
+                <td key={emp} style={{ ...tdS, textAlign: 'right', color: '#1b5e20', fontWeight: '600', fontSize: '11px' }}>
+                  {(vc.totalLechePorEmpresa?.[emp] ?? 0) > 0 ? `$${fmt(vc.totalLechePorEmpresa[emp])}` : '—'}
+                </td>
+              ))}
+              <td style={{ ...tdS, textAlign: 'right', fontWeight: '800', color: '#1b5e20', borderLeft: '3px solid #ddd', fontSize: '12px' }}>
+                RINDE: ${fmt(vc.rindeValorTotal)}
+              </td>
+            </tr>
+
+            {/* TOTAL EMPRESA */}
+            <tr style={{ background: '#1a1a2e', fontWeight: '700' }}>
+              <td style={{ ...tdS, color: 'white', fontWeight: '800', borderRight: '2px solid #333' }}>TOTAL $</td>
+              {grupos.map((g, gi) => (
+                <Fragment key={g.grupoId}>
+                  {empsPorGrupo[gi].map(emp => (
+                    <td key={emp} style={{ ...tdS, textAlign: 'right', color: '#ffe082', fontWeight: '700' }}>
+                      {(vc.totalValorPorEmpresa?.[emp] ?? 0) > 0 ? `$${fmt(vc.totalValorPorEmpresa[emp])}` : '—'}
+                    </td>
+                  ))}
+                  <td style={{ borderLeft: '2px solid #333' }} /><td /><td style={{ borderRight: '2px solid #333' }} />
+                </Fragment>
+              ))}
+              {empsSinGrupo.map(emp => (
+                <td key={emp} style={{ ...tdS, textAlign: 'right', color: '#ffe082', fontWeight: '700' }}>
+                  {(vc.totalValorPorEmpresa?.[emp] ?? 0) > 0 ? `$${fmt(vc.totalValorPorEmpresa[emp])}` : '—'}
+                </td>
+              ))}
+              <td style={{ ...tdS, textAlign: 'right', fontWeight: '800', color: '#ffe082', borderLeft: '3px solid #555', fontSize: '12px' }}>
+                PAGO: ${fmt(vc.pagoTotal)}
+              </td>
+            </tr>
+
+            {/* RINDE + TRANSPORTE */}
+            <tr style={{ background: '#0f3460' }}>
+              <td colSpan={2 + todasEmpresas.length + grupos.length * 3} style={{ ...tdS, color: '#9090c0', fontSize: '11px', borderRight: '2px solid #333' }}>
+                RINDE + TRANSPORTE
+              </td>
+              <td style={{ ...tdS, textAlign: 'right', fontWeight: '800', color: '#a5d6a7', fontSize: '13px', borderLeft: '3px solid #1a1a2e' }}>
+                ${fmt(vc.rindeTransporteTotal)}
               </td>
             </tr>
           </tfoot>
