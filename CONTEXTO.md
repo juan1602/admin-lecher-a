@@ -284,7 +284,25 @@ Nueva entidad `GrupoRinde` con tablas: `grupos_rinde`, `grupo_rinde_rutas`, `gru
 - Empresas no asignadas a ningún grupo aparecen en sección "Otros recibos"
 - Sin grupos: vista global anterior (sin cambios)
 - Panel "⚙ Grupos de Rinde" colapsable con CRUD de grupos
-- Modal de grupo: nombre, tipoLeche, rutas (checkboxes), empresas (chips desde recibos existentes + campo para nueva)
+- Modal de grupo: nombre, tipoLeche, rutas (checkboxes), empresas (chips desde recibos existentes + campo para nueva), **precioRinde** ($/litro que paga la empresa para valorizar el rinde)
+
+### Filas de resumen financiero en tabla de Transporte
+Debajo de los datos diarios aparecen estas filas adicionales:
+- **TOTAL L.** — litros totales por empresa + rinde litros por grupo
+- **$/TRANS** — precio transporte por empresa (último visto en recibos)
+- **TOTAL TRANS** — litros × precioTransporte → columna derecha muestra `TRANS: $X`
+- **$/LECHE** — precio a proveedor (precioLitro − precioTransporte) por empresa; en columna RINDE del grupo: `precioRinde` configurado
+- **TOTAL LECHE** — litros × precio leche por empresa; en columna RINDE del grupo: rinde litros × precioRinde → columna derecha muestra `RINDE: $X`
+- **TOTAL $** — litros × precioLitro completo (lo que paga la empresa) → columna derecha muestra `PAGO: $X`
+- **RINDE + TRANSPORTE** — fila final con el total que gana el operador
+
+### Campo precioRinde en GrupoRinde
+- Entidad `GrupoRinde` tiene campo `precioRinde` (Double, nullable) = precio configurado por litro de rinde
+- El servicio usa `g.getPrecioRinde()` directamente; si es null → muestra `—` y rinde = $0
+- Al editar el grupo se pre-llena este campo
+
+### Fix 400 en /recibos/empresas
+- `/{id}` en `ReciboEmpresaController` usa regex `/{id:[0-9]+}` para no capturar rutas literales
 
 ### Tip IDE
 Si el Java Language Server muestra "Duplicate method" sin que exista duplicado real → `Ctrl+Shift+P` → "Java: Clean Java Language Server Workspace"
