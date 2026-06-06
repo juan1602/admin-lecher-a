@@ -75,10 +75,15 @@ public class ReciboEmpresaService {
         Map<LocalDate, List<ReciboEmpresa>> recibosPorDia = recibos.stream()
                 .collect(Collectors.groupingBy(ReciboEmpresa::getFecha));
 
-        // Nombres de empresas distintas ordenados
-        List<String> nombresEmpresas = recibos.stream()
-                .map(ReciboEmpresa::getNombreRecibo)
-                .distinct()
+        // Nombres de empresas distintas (normalizados: trim + case-insensitive → un nombre canónico)
+        Map<String, String> nombreCanonicoMap = new java.util.LinkedHashMap<>();
+        recibos.stream()
+                .filter(r -> r.getNombreRecibo() != null)
+                .forEach(r -> {
+                    String key = r.getNombreRecibo().trim().toLowerCase();
+                    nombreCanonicoMap.putIfAbsent(key, r.getNombreRecibo().trim());
+                });
+        List<String> nombresEmpresas = nombreCanonicoMap.values().stream()
                 .sorted(Comparator.nullsLast(Comparator.naturalOrder()))
                 .collect(Collectors.toList());
 
@@ -89,8 +94,29 @@ public class ReciboEmpresaService {
             double litrosRecogidos = recogidosPorDia.getOrDefault(fecha, 0.0);
             List<ReciboEmpresa> recibosDia = recibosPorDia.getOrDefault(fecha, Collections.emptyList());
 
-            List<EntregaDiariaEmpresaDTO> empresasDia = recibosDia.stream()
-                    .map(this::buildEntregaDTO)
+            // Agrupar recibos del día por empresa (case-insensitive) para evitar duplicados
+            Map<String, List<ReciboEmpresa>> porEmpresaDia = recibosDia.stream()
+                    .filter(r -> r.getNombreRecibo() != null)
+                    .collect(Collectors.groupingBy(r -> r.getNombreRecibo().trim().toLowerCase()));
+
+            List<EntregaDiariaEmpresaDTO> empresasDia = porEmpresaDia.entrySet().stream()
+                    .map(e -> {
+                        List<ReciboEmpresa> grupo = e.getValue();
+                        ReciboEmpresa primero = grupo.get(0);
+                        double litrosGrupo = grupo.stream()
+                                .mapToDouble(r -> r.getLitrosRecibidos() != null ? r.getLitrosRecibidos() : 0).sum();
+                        EntregaDiariaEmpresaDTO dto = new EntregaDiariaEmpresaDTO();
+                        dto.setNombre(primero.getNombreRecibo().trim());
+                        double pl = primero.getPrecioLitro() != null ? primero.getPrecioLitro() : 0;
+                        double pt = primero.getPrecioTransporte() != null ? primero.getPrecioTransporte() : 0;
+                        dto.setLitros(litrosGrupo);
+                        dto.setPrecioLitro(pl);
+                        dto.setPrecioTransporte(pt);
+                        dto.setValorTotal(litrosGrupo * pl);
+                        dto.setValorTransporte(litrosGrupo * pt);
+                        dto.setValorProveedor(litrosGrupo * (pl - pt));
+                        return dto;
+                    })
                     .sorted(Comparator.comparing(EntregaDiariaEmpresaDTO::getNombre,
                             Comparator.nullsLast(Comparator.naturalOrder())))
                     .collect(Collectors.toList());
@@ -141,18 +167,4 @@ public class ReciboEmpresaService {
         return resumen;
     }
 
-    private EntregaDiariaEmpresaDTO buildEntregaDTO(ReciboEmpresa r) {
-        EntregaDiariaEmpresaDTO dto = new EntregaDiariaEmpresaDTO();
-        dto.setNombre(r.getNombreRecibo());
-        double litros = r.getLitrosRecibidos() != null ? r.getLitrosRecibidos() : 0;
-        double precioLitro = r.getPrecioLitro() != null ? r.getPrecioLitro() : 0;
-        double precioTrans = r.getPrecioTransporte() != null ? r.getPrecioTransporte() : 0;
-        dto.setLitros(litros);
-        dto.setPrecioLitro(precioLitro);
-        dto.setPrecioTransporte(precioTrans);
-        dto.setValorTotal(litros * precioLitro);
-        dto.setValorTransporte(litros * precioTrans);
-        dto.setValorProveedor(litros * (precioLitro - precioTrans));
-        return dto;
-    }
 }
