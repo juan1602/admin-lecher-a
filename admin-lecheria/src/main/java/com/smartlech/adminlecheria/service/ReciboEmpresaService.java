@@ -59,6 +59,10 @@ public class ReciboEmpresaService {
         reciboEmpresaRepository.deleteById(id);
     }
 
+    public List<String> listarEmpresasDistintas() {
+        return reciboEmpresaRepository.findNombresDistintos();
+    }
+
     public TransporteResumenDTO resumenTransporte(Long quincenaId) {
         Quincena quincena = quincenaRepository.findById(quincenaId)
                 .orElseThrow(() -> new RuntimeException("Quincena no encontrada: " + quincenaId));

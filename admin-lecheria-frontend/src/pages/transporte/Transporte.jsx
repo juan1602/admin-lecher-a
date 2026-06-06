@@ -35,13 +35,16 @@ export default function Transporte() {
   const [form, setForm]                   = useState(GRUPO_FORM_INIT)
   const [empresaInput, setEmpresaInput]   = useState('')
   const [guardando, setGuardando]         = useState(false)
+  const [empresasExistentes, setEmpresasExistentes] = useState([])
 
   useEffect(() => {
     Promise.all([
       api.get('/quincenas'),
       api.get('/grupos-rinde'),
       api.get('/rutas'),
-    ]).then(([qRes, gRes, rRes]) => {
+      api.get('/recibos/empresas'),
+    ]).then(([qRes, gRes, rRes, eRes]) => {
+      setEmpresasExistentes(eRes.data ?? [])
       setQuincenas(qRes.data)
       setGrupos(gRes.data)
       setRutas(rRes.data)
@@ -247,27 +250,46 @@ export default function Transporte() {
 
             {/* Empresas */}
             <label style={labelStyle}>Empresas compradoras (litros entregados)</label>
+
+            {/* Chips seleccionables de empresas ya existentes en recibos */}
+            {empresasExistentes.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                {empresasExistentes.map(emp => {
+                  const seleccionada = form.empresas.map(e => e.toLowerCase()).includes(emp.toLowerCase())
+                  return (
+                    <button key={emp} type="button" onClick={() => seleccionada ? quitarEmpresa(emp) : setForm(f => ({ ...f, empresas: [...f.empresas, emp] }))}
+                      style={{
+                        padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: '600',
+                        cursor: 'pointer', border: `2px solid ${seleccionada ? '#0288d1' : '#e0e0e0'}`,
+                        background: seleccionada ? '#e8f4fd' : 'white',
+                        color: seleccionada ? '#0288d1' : '#666',
+                        transition: 'all 0.15s',
+                      }}>
+                      {seleccionada ? '✓ ' : ''}{emp}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Campo para agregar una empresa nueva que aún no tiene recibos */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
               <input value={empresaInput} onChange={e => setEmpresaInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), agregarEmpresa())}
-                placeholder="Ej: TATIANA" style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
+                placeholder={empresasExistentes.length > 0 ? 'Agregar empresa nueva...' : 'Ej: TATIANA'}
+                style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
               <button onClick={agregarEmpresa} style={{ background: '#6c63ff', color: 'white', border: 'none', borderRadius: '8px', padding: '0 14px', cursor: 'pointer', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                + Agregar
+                + Nueva
               </button>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '20px', minHeight: '32px' }}>
-              {form.empresas.map(emp => (
-                <span key={emp} style={{
-                  background: '#e8f4fd', color: '#0288d1', borderRadius: '20px',
-                  padding: '4px 10px', fontSize: '12px', fontWeight: '600',
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                }}>
-                  {emp}
-                  <button onClick={() => quitarEmpresa(emp)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0288d1', padding: 0, fontSize: '14px', lineHeight: 1 }}>✕</button>
-                </span>
-              ))}
-              {form.empresas.length === 0 && <span style={{ fontSize: '12px', color: '#bbb' }}>Sin empresas agregadas</span>}
-            </div>
+            {form.empresas.length === 0 && (
+              <p style={{ margin: '0 0 16px', fontSize: '12px', color: '#bbb' }}>Sin empresas seleccionadas</p>
+            )}
+            {form.empresas.length > 0 && (
+              <p style={{ margin: '0 0 16px', fontSize: '12px', color: '#0288d1', fontWeight: '600' }}>
+                Seleccionadas: {form.empresas.join(', ')}
+              </p>
+            )}
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button onClick={() => setModal(null)} style={{ background: '#f5f5f5', border: 'none', borderRadius: '8px', padding: '10px 20px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>

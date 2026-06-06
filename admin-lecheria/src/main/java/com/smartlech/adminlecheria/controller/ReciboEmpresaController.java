@@ -26,6 +26,11 @@ public class ReciboEmpresaController {
         return ResponseEntity.ok(reciboEmpresaService.buscarPorId(id));
     }
 
+    @GetMapping("/empresas")
+    public List<String> empresasDistintas() {
+        return reciboEmpresaService.listarEmpresasDistintas();
+    }
+
     @GetMapping("/transporte/{quincenaId}")
     public ResponseEntity<TransporteResumenDTO> resumenTransporte(@PathVariable Long quincenaId) {
         return ResponseEntity.ok(reciboEmpresaService.resumenTransporte(quincenaId));
