@@ -198,6 +198,12 @@ public class GrupoRindeService {
         }
         List<Recoleccion> todasRecs = recoleccionRepository.findByQuincenaId(quincenaId);
         List<ReciboEmpresa> todosRecibos = reciboEmpresaRepository.findByQuincenaId(quincenaId);
+        if (rutaIdsFiltro != null && !rutaIdsFiltro.isEmpty()) {
+            Set<Long> filtroSet = new HashSet<>(rutaIdsFiltro);
+            todosRecibos = todosRecibos.stream()
+                    .filter(r -> r.getRuta() != null && filtroSet.contains(r.getRuta().getId()))
+                    .collect(Collectors.toList());
+        }
 
         // ── Lista ordenada de empresas ────────────────────────────────────────
         // Primero las configuradas en grupos (en orden de grupo), luego las demás

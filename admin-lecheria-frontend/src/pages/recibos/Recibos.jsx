@@ -68,8 +68,9 @@ function Recibos() {
       }
     }
   })
-  // Empresas siempre globales — el filtro de ruta solo afecta los totales
+  // Solo empresas asignadas a las rutas activas en el sidebar
   const empresas = Object.values(empresasMap)
+    .filter(e => e.rutaId && rutasSeleccionadas.has(e.rutaId))
     .sort((a, b) => a.nombre.localeCompare(b.nombre))
 
   // Recibos del día seleccionado
