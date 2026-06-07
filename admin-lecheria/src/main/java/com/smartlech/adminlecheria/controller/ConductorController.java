@@ -35,6 +35,15 @@ public class ConductorController {
         return ResponseEntity.ok(conductorService.guardar(conductor));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<Conductor> actualizar(@PathVariable Long id, @RequestBody Conductor conductor) {
+        Conductor existente = conductorService.buscarPorId(id);
+        existente.setNombre(conductor.getNombre());
+        existente.setTelefono(conductor.getTelefono());
+        existente.setRutaIds(conductor.getRutaIds() != null ? conductor.getRutaIds() : new java.util.HashSet<>());
+        return ResponseEntity.ok(conductorService.guardar(existente));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> desactivar(@PathVariable Long id) {
         conductorService.desactivar(id);
