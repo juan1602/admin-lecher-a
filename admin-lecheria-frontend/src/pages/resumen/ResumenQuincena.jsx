@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import ReciboProveedorModal from './ReciboProveedorModal'
+import { useRutaVista } from '../../context/RutaVistaContext'
 
 const fmt = (n) => Math.round(n).toLocaleString('es-CO')
 const fmtL = (n) => Number(n).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })
 
 function ResumenQuincena() {
+  const { rutasSeleccionadas } = useRutaVista()
   const [quincenas, setQuincenas] = useState([])
   const [quincenaId, setQuincenaId] = useState('')
   const [quincenaTexto, setQuincenaTexto] = useState('')
@@ -83,14 +85,20 @@ function ResumenQuincena() {
         <div style={{ textAlign: 'center', padding: '60px', color: '#999' }}>Calculando resumen...</div>
       )}
 
-      {resumen && !cargando && (
+      {resumen && !cargando && (() => {
+        const provsFiltrados = resumen.proveedores.filter(p => !p.rutaId || rutasSeleccionadas.has(p.rutaId))
+        const totL  = provsFiltrados.reduce((s, p) => s + p.totalLitros, 0)
+        const totBruto = provsFiltrados.reduce((s, p) => s + p.valorBruto, 0)
+        const totDesc  = provsFiltrados.reduce((s, p) => s + p.descuento4x1000 + p.totalOtrosDescuentos, 0)
+        const totNeto  = provsFiltrados.reduce((s, p) => s + p.valorNeto, 0)
+        return (
         <>
           {/* Tarjetas de totales globales */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '28px' }}>
-            <Tarjeta label="Proveedores" valor={resumen.totalProveedores} color="#6c63ff" />
-            <Tarjeta label="Total litros" valor={`${fmtL(resumen.totalLitros)} L`} color="#0288d1" />
-            <Tarjeta label="Total descuentos" valor={`$${fmt(resumen.totalDescuentos4x1000 + resumen.totalOtrosDescuentos)}`} color="#e65100" />
-            <Tarjeta label="TOTAL A PAGAR" valor={`$${fmt(resumen.totalValorNeto)}`} color="#1b5e20" grande />
+            <Tarjeta label="Proveedores" valor={provsFiltrados.length} color="#6c63ff" />
+            <Tarjeta label="Total litros" valor={`${fmtL(totL)} L`} color="#0288d1" />
+            <Tarjeta label="Total descuentos" valor={`$${fmt(totDesc)}`} color="#e65100" />
+            <Tarjeta label="TOTAL A PAGAR" valor={`$${fmt(totNeto)}`} color="#1b5e20" grande />
           </div>
 
           {/* Título estilo Excel */}
@@ -122,7 +130,7 @@ function ResumenQuincena() {
                 </tr>
               </thead>
               <tbody>
-                {resumen.proveedores.map((p, i) => (
+                {provsFiltrados.map((p, i) => (
                   <tr key={p.proveedorId}
                     style={{
                       borderBottom: '1px solid #f0f0f0',
@@ -164,14 +172,14 @@ function ResumenQuincena() {
               <tfoot>
                 <tr style={{ background: '#1a1a2e', color: 'white', fontWeight: '700' }}>
                   <td colSpan={3} style={{ ...td, color: 'white', fontSize: '13px', letterSpacing: '0.5px' }}>TOTAL A PAGAR</td>
-                  <td style={{ ...td, textAlign: 'right', color: 'white' }}>{fmtL(resumen.totalLitros)}</td>
+                  <td style={{ ...td, textAlign: 'right', color: 'white' }}>{fmtL(totL)}</td>
                   <td style={td}></td>
-                  <td style={{ ...td, textAlign: 'right', color: 'white' }}>${fmt(resumen.totalValorBruto)}</td>
+                  <td style={{ ...td, textAlign: 'right', color: 'white' }}>${fmt(totBruto)}</td>
                   <td style={{ ...td, textAlign: 'right', color: '#ef9a9a' }}>
-                    -{`$${fmt(resumen.totalDescuentos4x1000 + resumen.totalOtrosDescuentos)}`}
+                    -{`$${fmt(totDesc)}`}
                   </td>
                   <td style={{ ...td, textAlign: 'right', color: '#a5d6a7', fontSize: '16px' }}>
-                    ${fmt(resumen.totalValorNeto)}
+                    ${fmt(totNeto)}
                   </td>
                   <td style={td}></td>
                 </tr>
@@ -179,7 +187,8 @@ function ResumenQuincena() {
             </table>
           </div>
         </>
-      )}
+        )
+      })()}
 
       {!resumen && !cargando && quincenaId && !error && (
         <div style={{ textAlign: 'center', padding: '60px', color: '#999' }}>

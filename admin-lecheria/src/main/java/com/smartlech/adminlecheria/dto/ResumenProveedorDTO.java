@@ -5,6 +5,8 @@ import java.util.List;
 public class ResumenProveedorDTO {
 
     private Long proveedorId;
+    private Long rutaId;
+    private String rutaNombre;
     private String nombre;
     private String zona;
     private String tipoLeche;
@@ -22,6 +24,12 @@ public class ResumenProveedorDTO {
 
     public Long getProveedorId() { return proveedorId; }
     public void setProveedorId(Long proveedorId) { this.proveedorId = proveedorId; }
+
+    public Long getRutaId() { return rutaId; }
+    public void setRutaId(Long rutaId) { this.rutaId = rutaId; }
+
+    public String getRutaNombre() { return rutaNombre; }
+    public void setRutaNombre(String rutaNombre) { this.rutaNombre = rutaNombre; }
 
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }

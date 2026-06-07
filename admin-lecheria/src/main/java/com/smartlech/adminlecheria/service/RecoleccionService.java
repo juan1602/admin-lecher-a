@@ -137,6 +137,8 @@ public class RecoleccionService {
 
         ResumenProveedorDTO dto = new ResumenProveedorDTO();
         dto.setProveedorId(proveedorId);
+        dto.setRutaId(prov.getRuta() != null ? prov.getRuta().getId() : null);
+        dto.setRutaNombre(prov.getRuta() != null ? prov.getRuta().getNombre() : null);
         dto.setNombre(prov.getNombre());
         dto.setZona(prov.getZona());
         dto.setTipoLeche(prov.getTipoLeche());

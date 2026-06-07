@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import { guardarPendiente, cachearDatos, getDatosCache } from '../../lib/offlineStore'
+import { useRutaVista } from '../../context/RutaVistaContext'
 
 function Recolecciones() {
+  const { rutasSeleccionadas } = useRutaVista()
   const [quincenaAbierta, setQuincenaAbierta] = useState(null)
   const [rutas, setRutas] = useState([])
   const [conductores, setConductores] = useState([])
@@ -169,10 +171,12 @@ function Recolecciones() {
     }
   }
 
+  const enRutaActiva = (r) => rutasSeleccionadas.has(r.proveedor?.ruta?.id)
+
   // Registros del día seleccionado
-  const delDia = recolecciones.filter(r => r.fecha === fechaSeleccionada)
+  const delDia = recolecciones.filter(r => r.fecha === fechaSeleccionada && enRutaActiva(r))
   const totalLitrosDia = delDia.reduce((sum, r) => sum + (r.litrosRecolectados ?? 0), 0)
-  const totalLitros = recolecciones.reduce((sum, r) => sum + (r.litrosRecolectados ?? 0), 0)
+  const totalLitros = recolecciones.filter(enRutaActiva).reduce((sum, r) => sum + (r.litrosRecolectados ?? 0), 0)
 
   // Navegación de días dentro de la quincena
   const cambiarDia = (delta) => {
@@ -273,7 +277,7 @@ function Recolecciones() {
                     <select onChange={handleRutaFiltro} required
                       style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd', boxSizing: 'border-box' }}>
                       <option value="">Seleccionar ruta...</option>
-                      {rutas.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                      {rutas.filter(r => rutasSeleccionadas.has(r.id)).map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
                     </select>
                   </div>
                   <div>

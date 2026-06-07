@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
+import { useRutaVista } from '../../context/RutaVistaContext'
 
 function Proveedores() {
+  const { rutasSeleccionadas } = useRutaVista()
   const [proveedores, setProveedores] = useState([])
   const [rutas, setRutas] = useState([])
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
@@ -166,7 +168,7 @@ function Proveedores() {
             </tr>
           </thead>
           <tbody>
-            {proveedores.map((p, i) => (
+            {proveedores.filter(p => !p.ruta || rutasSeleccionadas.has(p.ruta.id)).map((p, i) => (
               <tr key={p.id} style={{ borderTop: '1px solid #f0f0f0', background: editando === p.id ? '#f3f0ff' : i % 2 === 0 ? 'white' : '#fafafa' }}>
                 <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '500' }}>{p.nombre}</td>
                 <td style={{ padding: '12px 16px', fontSize: '14px', color: '#666' }}>{p.zona}</td>
@@ -200,7 +202,7 @@ function Proveedores() {
                 </td>
               </tr>
             ))}
-            {proveedores.length === 0 && (
+            {proveedores.filter(p => !p.ruta || rutasSeleccionadas.has(p.ruta.id)).length === 0 && (
               <tr>
                 <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#999' }}>No hay proveedores registrados</td>
               </tr>

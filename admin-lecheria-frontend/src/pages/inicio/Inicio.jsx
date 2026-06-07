@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../api/axios'
+import { useRutaVista } from '../../context/RutaVistaContext'
 
 const fmt  = (n) => Math.round(n ?? 0).toLocaleString('es-CO')
 const fmtL = (n) => Number(n ?? 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })
@@ -17,9 +18,12 @@ const ACCESOS = [
 ]
 
 export default function Inicio() {
+  const { rutasSeleccionadas } = useRutaVista()
   const [quincena, setQuincena] = useState(null)
   const [stats, setStats]       = useState(null)
   const [litrosPorDia, setLitrosPorDia] = useState([])
+  const [todosRecs, setTodosRecs] = useState([])
+  const [todosProvs, setTodosProvs] = useState([])
   const [cargando, setCargando] = useState(true)
 
   useEffect(() => { cargarDatos() }, [])
@@ -33,41 +37,13 @@ export default function Inicio() {
       ])
       const q = qRes.data
       setQuincena(q)
+      setTodosProvs(provRes.data ?? [])
 
       const recolRes = await api.get(`/recolecciones/quincena/${q.id}`)
       const recs = recolRes.data ?? []
-      const hoy  = recs.filter(r => r.fecha === HOY)
+      setTodosRecs(recs)
 
-      const totalLitros = recs.reduce((s, r) => s + (r.litrosRecolectados ?? 0), 0)
-
-      // Agrupar litros por fecha para la gráfica
-      const porFecha = {}
-      recs.forEach(r => {
-        porFecha[r.fecha] = (porFecha[r.fecha] ?? 0) + (r.litrosRecolectados ?? 0)
-      })
-
-      // Generar todos los días del rango de la quincena
-      const dias = []
-      const inicio = new Date(q.fechaInicio + 'T00:00:00')
-      const fin    = new Date(q.fechaFin    + 'T00:00:00')
-      const hoyDate = new Date(HOY + 'T00:00:00')
-      for (let d = new Date(inicio); d <= fin && d <= hoyDate; d.setDate(d.getDate() + 1)) {
-        const key = d.toISOString().split('T')[0]
-        dias.push({ fecha: key, litros: porFecha[key] ?? 0 })
-      }
-      setLitrosPorDia(dias)
-
-      // Estimado a pagar: promedio $1.900/litro (precio referencial)
-      const estimadoPago = totalLitros * 1900
-
-      setStats({
-        proveedores:     provRes.data?.length ?? 0,
-        litrosHoy:       hoy.reduce((s, r) => s + (r.litrosRecolectados ?? 0), 0),
-        recolsHoy:       hoy.length,
-        litrosQuincena:  totalLitros,
-        diasConDatos:    [...new Set(recs.map(r => r.fecha))].length,
-        estimadoPago,
-      })
+      calcularStats(recs, provRes.data ?? [], rutasSeleccionadas, q)
     } catch {
       setQuincena(null)
       setStats(null)
@@ -76,6 +52,47 @@ export default function Inicio() {
       setCargando(false)
     }
   }
+
+  const calcularStats = (recs, provs, rutasSel, q) => {
+    const recsFilt = recs.filter(r => rutasSel.has(r.proveedor?.ruta?.id))
+    const provsFilt = provs.filter(p => rutasSel.has(p.ruta?.id))
+
+    const hoy = recsFilt.filter(r => r.fecha === HOY)
+    const totalLitros = recsFilt.reduce((s, r) => s + (r.litrosRecolectados ?? 0), 0)
+
+    // Agrupar litros por fecha para la gráfica
+    const porFecha = {}
+    recsFilt.forEach(r => {
+      porFecha[r.fecha] = (porFecha[r.fecha] ?? 0) + (r.litrosRecolectados ?? 0)
+    })
+
+    // Generar todos los días del rango de la quincena
+    const dias = []
+    const inicio = new Date(q.fechaInicio + 'T00:00:00')
+    const fin    = new Date(q.fechaFin    + 'T00:00:00')
+    const hoyDate = new Date(HOY + 'T00:00:00')
+    for (let d = new Date(inicio); d <= fin && d <= hoyDate; d.setDate(d.getDate() + 1)) {
+      const key = d.toISOString().split('T')[0]
+      dias.push({ fecha: key, litros: porFecha[key] ?? 0 })
+    }
+    setLitrosPorDia(dias)
+
+    setStats({
+      proveedores:    provsFilt.length,
+      litrosHoy:      hoy.reduce((s, r) => s + (r.litrosRecolectados ?? 0), 0),
+      recolsHoy:      hoy.length,
+      litrosQuincena: totalLitros,
+      diasConDatos:   [...new Set(recsFilt.map(r => r.fecha))].length,
+      estimadoPago:   totalLitros * 1900,
+    })
+  }
+
+  // Re-calcular cuando cambia la selección de rutas
+  useEffect(() => {
+    if (todosRecs.length > 0 && quincena) {
+      calcularStats(todosRecs, todosProvs, rutasSeleccionadas, quincena)
+    }
+  }, [rutasSeleccionadas])
 
   const fechaHoy = () => {
     const d = new Date()

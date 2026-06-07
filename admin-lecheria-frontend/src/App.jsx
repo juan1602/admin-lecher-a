@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import OfflineBanner from './components/OfflineBanner'
+import { RutaVistaProvider } from './context/RutaVistaContext'
 import Proveedores from './pages/proveedores/Proveedores'
 import Rutas from './pages/rutas/Rutas'
 import Conductores from './pages/conductores/Conductores'
@@ -14,7 +15,7 @@ import Inicio from './pages/inicio/Inicio'
 
 function App() {
   return (
-    <>
+    <RutaVistaProvider>
     <OfflineBanner />
     <Layout>
       <Routes>
@@ -30,7 +31,7 @@ function App() {
         <Route path="/descuentos" element={<Descuentos />} />
       </Routes>
     </Layout>
-    </>
+    </RutaVistaProvider>
   )
 }
 
