@@ -31,6 +31,10 @@ public class ReciboEmpresa {
     @Column(name = "solo_transporte")
     private Boolean soloTransporte = false;
 
+    @ManyToOne
+    @JoinColumn(name = "ruta_id")
+    private Ruta ruta;
+
     @Column(nullable = false)
     private LocalDate fecha;
 
@@ -51,6 +55,8 @@ public class ReciboEmpresa {
     public void setPrecioTransporte(Double precioTransporte) { this.precioTransporte = precioTransporte; }
     public Boolean getSoloTransporte() { return soloTransporte != null ? soloTransporte : false; }
     public void setSoloTransporte(Boolean soloTransporte) { this.soloTransporte = soloTransporte != null && soloTransporte; }
+    public Ruta getRuta() { return ruta; }
+    public void setRuta(Ruta ruta) { this.ruta = ruta; }
     public LocalDate getFecha() { return fecha; }
     public void setFecha(LocalDate fecha) { this.fecha = fecha; }
     public List<ReciboDetalle> getDetalles() { return detalles; }

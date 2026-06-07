@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api/grupos-rinde")
@@ -43,7 +44,9 @@ public class GrupoRindeController {
     }
 
     @GetMapping("/vista-completa/{quincenaId}")
-    public TransporteCompletoDTO vistaCompleta(@PathVariable Long quincenaId) {
-        return grupoRindeService.calcularVistaCompleta(quincenaId);
+    public TransporteCompletoDTO vistaCompleta(
+            @PathVariable Long quincenaId,
+            @RequestParam(required = false) List<Long> rutaIds) {
+        return grupoRindeService.calcularVistaCompleta(quincenaId, rutaIds);
     }
 }

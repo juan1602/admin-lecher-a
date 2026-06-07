@@ -54,6 +54,7 @@ public class ReciboEmpresaController {
         existente.setPrecioTransporte(recibo.getPrecioTransporte());
         existente.setSoloTransporte(recibo.getSoloTransporte());
         existente.setFecha(recibo.getFecha());
+        existente.setRuta(recibo.getRuta());
         return ResponseEntity.ok(reciboEmpresaService.guardar(existente));
     }
 

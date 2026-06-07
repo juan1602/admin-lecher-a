@@ -185,11 +185,17 @@ public class GrupoRindeService {
         return result;
     }
 
-    public TransporteCompletoDTO calcularVistaCompleta(Long quincenaId) {
+    public TransporteCompletoDTO calcularVistaCompleta(Long quincenaId, List<Long> rutaIdsFiltro) {
         Quincena quincena = quincenaRepository.findById(quincenaId)
                 .orElseThrow(() -> new RuntimeException("Quincena no encontrada: " + quincenaId));
 
         List<GrupoRinde> grupos = grupoRindeRepository.findAll();
+        if (rutaIdsFiltro != null && !rutaIdsFiltro.isEmpty()) {
+            Set<Long> filtroSet = new HashSet<>(rutaIdsFiltro);
+            grupos = grupos.stream()
+                    .filter(g -> g.getRutaIds().stream().anyMatch(filtroSet::contains))
+                    .collect(Collectors.toList());
+        }
         List<Recoleccion> todasRecs = recoleccionRepository.findByQuincenaId(quincenaId);
         List<ReciboEmpresa> todosRecibos = reciboEmpresaRepository.findByQuincenaId(quincenaId);
 

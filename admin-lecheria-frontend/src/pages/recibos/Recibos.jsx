@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
+import { useRutaVista } from '../../context/RutaVistaContext'
 
 const fmt  = (n) => Math.round(n ?? 0).toLocaleString('es-CO')
 const fmtL = (n) => Number(n ?? 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })
@@ -7,10 +8,11 @@ const fmtL = (n) => Number(n ?? 0).toLocaleString('es-CO', { minimumFractionDigi
 const FORM_VACIO = {
   nombreRecibo: '', litrosRecibidos: '', precioLitro: '',
   precioTransporte: '', soloTransporte: false,
-  fecha: new Date().toISOString().split('T')[0]
+  fecha: new Date().toISOString().split('T')[0], rutaId: ''
 }
 
 function Recibos() {
+  const { rutasDisponibles, rutasSeleccionadas } = useRutaVista()
   const [quincenaAbierta, setQuincenaAbierta] = useState(null)
   const [recibos, setRecibos]               = useState([])
   const [fechaSeleccionada, setFecha]       = useState(new Date().toISOString().split('T')[0])
@@ -52,29 +54,36 @@ function Recibos() {
     return `${parseInt(d)} de ${meses[parseInt(m)-1]} de ${a}`
   }
 
-  // Empresas únicas de la quincena (normalizadas)
+  // Empresas únicas de la quincena (normalizadas), filtradas por ruta activa
   const empresasMap = {}
   recibos.forEach(r => {
     const key = (r.nombreRecibo ?? '').trim().toLowerCase()
     if (key && !empresasMap[key]) {
       empresasMap[key] = {
         nombre: r.nombreRecibo.trim(),
+        rutaId: r.ruta?.id ?? null,
         precioLitro: r.precioLitro,
         precioTransporte: r.precioTransporte,
         soloTransporte: r.soloTransporte
       }
     }
   })
-  const empresas = Object.values(empresasMap).sort((a, b) => a.nombre.localeCompare(b.nombre))
+  const empresas = Object.values(empresasMap)
+    .filter(e => !e.rutaId || rutasSeleccionadas.has(e.rutaId))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre))
 
   // Recibos del día seleccionado
   const delDia = recibos.filter(r => r.fecha === fechaSeleccionada)
   const delDiaMap = {}
   delDia.forEach(r => { delDiaMap[(r.nombreRecibo ?? '').trim().toLowerCase()] = r })
 
-  // Totales del día
-  const litrosDia  = delDia.reduce((s, r) => s + (r.litrosRecibidos ?? 0), 0)
-  const litrosTotal = recibos.reduce((s, r) => s + (r.litrosRecibidos ?? 0), 0)
+  const enRutaActiva = (r) => !r.ruta?.id || rutasSeleccionadas.has(r.ruta.id)
+
+  // Totales del día (solo rutas activas)
+  const litrosDia   = delDia.filter(enRutaActiva).reduce((s, r) => s + (r.litrosRecibidos ?? 0), 0)
+  const litrosTotal = recibos.filter(enRutaActiva).reduce((s, r) => s + (r.litrosRecibidos ?? 0), 0)
+
+  const rutaUnica = rutasSeleccionadas.size === 1 ? [...rutasSeleccionadas][0] : ''
 
   // Abrir modal para agregar a empresa conocida
   const abrirAgregar = (empresa) => {
@@ -85,7 +94,8 @@ function Recibos() {
       precioLitro: empresa.precioLitro ?? '',
       precioTransporte: empresa.precioTransporte ?? '',
       soloTransporte: empresa.soloTransporte ?? false,
-      fecha: fechaSeleccionada
+      fecha: fechaSeleccionada,
+      rutaId: empresa.rutaId ?? rutaUnica
     })
     setModal({ modo: 'agregar', empresa })
   }
@@ -99,7 +109,8 @@ function Recibos() {
       precioLitro: recibo.precioLitro ?? '',
       precioTransporte: recibo.precioTransporte ?? '',
       soloTransporte: recibo.soloTransporte ?? false,
-      fecha: recibo.fecha ?? fechaSeleccionada
+      fecha: recibo.fecha ?? fechaSeleccionada,
+      rutaId: recibo.ruta?.id ?? rutaUnica
     })
     setModal({ modo: 'editar', recibo })
   }
@@ -107,7 +118,7 @@ function Recibos() {
   // Abrir modal para nueva empresa
   const abrirNuevo = () => {
     setError(null)
-    setForm({ ...FORM_VACIO, fecha: fechaSeleccionada })
+    setForm({ ...FORM_VACIO, fecha: fechaSeleccionada, rutaId: rutaUnica })
     setModal({ modo: 'nuevo' })
   }
 
@@ -127,7 +138,8 @@ function Recibos() {
       precioTransporte: form.precioTransporte ? parseFloat(form.precioTransporte) : null,
       soloTransporte: !!form.soloTransporte,
       fecha: form.fecha,
-      quincena: { id: quincenaAbierta.id }
+      quincena: { id: quincenaAbierta.id },
+      ruta: form.rutaId ? { id: parseInt(form.rutaId) } : null
     }
     try {
       if (modal?.modo === 'editar') {
@@ -306,6 +318,19 @@ function Recibos() {
                     <datalist id="empresas-list">
                       {empresas.map(e => <option key={e.nombre} value={e.nombre} />)}
                     </datalist>
+                  </div>
+                )}
+
+                {/* Ruta — siempre visible si hay más de una disponible */}
+                {rutasDisponibles.length > 1 && (
+                  <div>
+                    <label style={lbl}>Ruta</label>
+                    <select name="rutaId" value={form.rutaId} onChange={handleChange} required style={inp}>
+                      <option value="">Seleccionar ruta...</option>
+                      {rutasDisponibles.filter(r => rutasSeleccionadas.has(r.id)).map(r => (
+                        <option key={r.id} value={r.id}>{r.nombre}</option>
+                      ))}
+                    </select>
                   </div>
                 )}
 

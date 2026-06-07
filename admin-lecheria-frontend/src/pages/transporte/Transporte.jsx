@@ -1,5 +1,6 @@
 import { useState, useEffect, Fragment } from 'react'
 import api from '../../api/axios'
+import { useRutaVista } from '../../context/RutaVistaContext'
 
 const fmt  = (n) => Math.round(n ?? 0).toLocaleString('es-CO')
 const fmtL = (n) => Number(n ?? 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })
@@ -14,6 +15,7 @@ const COLORES = ['#0288d1', '#388e3c', '#e65100', '#6c63ff', '#c62828', '#00838f
 const GRUPO_FORM_INIT = { nombre: '', tipoLeche: '', rutaIds: [], empresas: [], precioRinde: '' }
 
 export default function Transporte() {
+  const { rutasSeleccionadas } = useRutaVista()
   const [quincenas, setQuincenas]               = useState([])
   const [quincenaId, setQuincenaId]             = useState('')
   const [grupos, setGrupos]                     = useState([])
@@ -50,7 +52,8 @@ export default function Transporte() {
     setCargando(true); setError(null)
     try {
       if (gruposActuales.length > 0) {
-        const r = await api.get(`/grupos-rinde/vista-completa/${id}`)
+        const rutaParam = [...rutasSeleccionadas].join(',')
+        const r = await api.get(`/grupos-rinde/vista-completa/${id}?rutaIds=${rutaParam}`)
         setVistaCompleta(r.data); setResumen(null)
       } else {
         const r = await api.get(`/recibos/transporte/${id}`)
@@ -60,6 +63,11 @@ export default function Transporte() {
       setError(`Error al cargar: ${e?.response?.status ?? 'sin conexión'}`)
     } finally { setCargando(false) }
   }
+
+  // Recargar cuando cambia la selección de rutas
+  useEffect(() => {
+    if (quincenaId) cargarResumen(quincenaId)
+  }, [rutasSeleccionadas])
 
   const handleQuincena = (e) => {
     setQuincenaId(e.target.value); setVistaCompleta(null); setResumen(null); setError(null)
