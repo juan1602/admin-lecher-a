@@ -68,10 +68,11 @@ function Recibos() {
       }
     }
   })
-  // Solo empresas asignadas a las rutas activas en el sidebar
-  const empresas = Object.values(empresasMap)
-    .filter(e => e.rutaId && rutasSeleccionadas.has(e.rutaId))
-    .sort((a, b) => a.nombre.localeCompare(b.nombre))
+  const todasEmpresas = Object.values(empresasMap).sort((a, b) => a.nombre.localeCompare(b.nombre))
+  // Empresas asignadas a las rutas activas
+  const empresas = todasEmpresas.filter(e => e.rutaId && rutasSeleccionadas.has(e.rutaId))
+  // Empresas sin ruta asignada (siempre visibles para poder gestionarlas)
+  const empresasSinRuta = todasEmpresas.filter(e => !e.rutaId)
 
   // Recibos del día seleccionado
   const delDia = recibos.filter(r => r.fecha === fechaSeleccionada)
@@ -216,7 +217,7 @@ function Recibos() {
       </div>
 
       {/* Panel de empresas del día */}
-      {empresas.length === 0 ? (
+      {empresas.length === 0 && empresasSinRuta.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px', color: '#999', background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
           Aún no hay empresas registradas. Toca <strong>+ Nueva empresa</strong> para comenzar.
         </div>
@@ -293,6 +294,43 @@ function Recibos() {
               </div>
             )
           })}
+
+          {/* Sección: empresas sin ruta asignada */}
+          {empresasSinRuta.length > 0 && (
+            <div style={{ marginTop: '8px' }}>
+              <div style={{ fontSize: '11px', color: '#e65100', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                ⚠️ Sin ruta asignada — edita cada empresa para asignarle su ruta
+              </div>
+              {empresasSinRuta.map(emp => {
+                const key = emp.nombre.toLowerCase()
+                const rec = delDiaMap[key]
+                return (
+                  <div key={emp.nombre} style={{
+                    background: '#fffde7', borderRadius: '12px',
+                    borderLeft: '4px solid #ffc107',
+                    padding: '12px 18px', marginBottom: '8px',
+                    display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: '600', fontSize: '14px', color: '#5d4037' }}>{emp.nombre}</div>
+                      <div style={{ fontSize: '11px', color: '#8d6e63', marginTop: '2px' }}>Sin ruta — haz clic en Editar para asignarla</div>
+                    </div>
+                    {rec && (
+                      <div style={{ fontSize: '13px', color: '#666' }}>
+                        {rec.litrosRecibidos} L hoy
+                      </div>
+                    )}
+                    {rec && (
+                      <button onClick={() => abrirEditar(rec)}
+                        style={{ background: '#fff3e0', color: '#e65100', border: 'none', padding: '7px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
+                        ✏️ Asignar ruta
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
