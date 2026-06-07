@@ -68,8 +68,8 @@ function Recibos() {
       }
     }
   })
+  // Empresas siempre globales — el filtro de ruta solo afecta los totales
   const empresas = Object.values(empresasMap)
-    .filter(e => !e.rutaId || rutasSeleccionadas.has(e.rutaId))
     .sort((a, b) => a.nombre.localeCompare(b.nombre))
 
   // Recibos del día seleccionado
@@ -236,11 +236,20 @@ function Recibos() {
               }}>
                 {/* Nombre y precios */}
                 <div style={{ flex: 1, minWidth: '140px' }}>
-                  <div style={{ fontWeight: '600', fontSize: '15px', color: '#1a1a2e' }}>
-                    {emp.nombre}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: '600', fontSize: '15px', color: '#1a1a2e' }}>{emp.nombre}</span>
                     {emp.soloTransporte && (
-                      <span style={{ marginLeft: '8px', fontSize: '11px', background: '#fff3e0', color: '#e65100', padding: '2px 6px', borderRadius: '4px' }}>
+                      <span style={{ fontSize: '11px', background: '#fff3e0', color: '#e65100', padding: '2px 6px', borderRadius: '4px' }}>
                         solo trans.
+                      </span>
+                    )}
+                    {emp.rutaId ? (
+                      <span style={{ fontSize: '11px', background: '#ede7f6', color: '#4527a0', padding: '2px 8px', borderRadius: '10px' }}>
+                        {rutasDisponibles.find(r => r.id === emp.rutaId)?.nombre ?? '?'}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '11px', background: '#f5f5f5', color: '#999', padding: '2px 8px', borderRadius: '10px' }}>
+                        Sin ruta
                       </span>
                     )}
                   </div>
@@ -327,7 +336,7 @@ function Recibos() {
                     <label style={lbl}>Ruta</label>
                     <select name="rutaId" value={form.rutaId} onChange={handleChange} required style={inp}>
                       <option value="">Seleccionar ruta...</option>
-                      {rutasDisponibles.filter(r => rutasSeleccionadas.has(r.id)).map(r => (
+                      {rutasDisponibles.map(r => (
                         <option key={r.id} value={r.id}>{r.nombre}</option>
                       ))}
                     </select>
