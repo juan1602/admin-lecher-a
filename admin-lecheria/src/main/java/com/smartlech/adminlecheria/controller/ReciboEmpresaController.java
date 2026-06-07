@@ -55,7 +55,15 @@ public class ReciboEmpresaController {
         existente.setSoloTransporte(recibo.getSoloTransporte());
         existente.setFecha(recibo.getFecha());
         existente.setRuta(recibo.getRuta());
-        return ResponseEntity.ok(reciboEmpresaService.guardar(existente));
+        ReciboEmpresa guardado = reciboEmpresaService.guardar(existente);
+        if (recibo.getRuta() != null) {
+            reciboEmpresaService.propagarRuta(
+                existente.getQuincena().getId(),
+                existente.getNombreRecibo(),
+                recibo.getRuta()
+            );
+        }
+        return ResponseEntity.ok(guardado);
     }
 
     @DeleteMapping("/{id}")

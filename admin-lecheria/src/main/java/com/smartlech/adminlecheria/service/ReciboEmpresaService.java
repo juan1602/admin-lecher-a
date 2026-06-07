@@ -6,6 +6,7 @@ import com.smartlech.adminlecheria.dto.TransporteResumenDTO;
 import com.smartlech.adminlecheria.entity.Quincena;
 import com.smartlech.adminlecheria.entity.Recoleccion;
 import com.smartlech.adminlecheria.entity.ReciboEmpresa;
+import com.smartlech.adminlecheria.entity.Ruta;
 import com.smartlech.adminlecheria.repository.QuincenaRepository;
 import com.smartlech.adminlecheria.repository.ReciboEmpresaRepository;
 import com.smartlech.adminlecheria.repository.RecoleccionRepository;
@@ -61,6 +62,17 @@ public class ReciboEmpresaService {
 
     public List<String> listarEmpresasDistintas() {
         return reciboEmpresaRepository.findNombresDistintos();
+    }
+
+    public void propagarRuta(Long quincenaId, String nombreRecibo, Ruta ruta) {
+        List<ReciboEmpresa> todos = reciboEmpresaRepository.findByQuincenaId(quincenaId);
+        for (ReciboEmpresa r : todos) {
+            if (r.getNombreRecibo() != null &&
+                r.getNombreRecibo().trim().equalsIgnoreCase(nombreRecibo.trim())) {
+                r.setRuta(ruta);
+                reciboEmpresaRepository.save(r);
+            }
+        }
     }
 
     public TransporteResumenDTO resumenTransporte(Long quincenaId) {
