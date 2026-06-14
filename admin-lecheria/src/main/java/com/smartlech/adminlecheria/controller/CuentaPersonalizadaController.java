@@ -43,19 +43,21 @@ public class CuentaPersonalizadaController {
         return service.listarIngresos(id, quincenaId);
     }
 
-    @PostMapping("/{id}/ingresos/{reciboId}")
+    @PostMapping("/{id}/ingresos")
     public ResponseEntity<Void> agregarIngreso(
             @PathVariable Long id,
-            @PathVariable Long reciboId) {
-        service.agregarIngreso(id, reciboId);
+            @RequestParam Long quincenaId,
+            @RequestBody Map<String, String> body) {
+        service.agregarIngreso(id, quincenaId, body.get("nombreRecibo"));
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{id}/ingresos/{reciboId}")
+    @DeleteMapping("/{id}/ingresos")
     public ResponseEntity<Void> quitarIngreso(
             @PathVariable Long id,
-            @PathVariable Long reciboId) {
-        service.quitarIngreso(id, reciboId);
+            @RequestParam Long quincenaId,
+            @RequestParam String nombreRecibo) {
+        service.quitarIngreso(id, quincenaId, nombreRecibo);
         return ResponseEntity.noContent().build();
     }
 

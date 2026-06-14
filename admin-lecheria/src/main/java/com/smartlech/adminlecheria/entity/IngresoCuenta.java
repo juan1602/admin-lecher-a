@@ -15,8 +15,12 @@ public class IngresoCuenta {
     private CuentaPersonalizada cuenta;
 
     @ManyToOne
-    @JoinColumn(name = "recibo_id", nullable = false)
-    private ReciboEmpresa recibo;
+    @JoinColumn(name = "quincena_id", nullable = false)
+    private Quincena quincena;
+
+    // Nombre de la empresa/recibo — agrupa todos los registros diarios de ese nombre
+    @Column(name = "nombre_recibo", nullable = false)
+    private String nombreRecibo;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -24,6 +28,9 @@ public class IngresoCuenta {
     public CuentaPersonalizada getCuenta() { return cuenta; }
     public void setCuenta(CuentaPersonalizada cuenta) { this.cuenta = cuenta; }
 
-    public ReciboEmpresa getRecibo() { return recibo; }
-    public void setRecibo(ReciboEmpresa recibo) { this.recibo = recibo; }
+    public Quincena getQuincena() { return quincena; }
+    public void setQuincena(Quincena quincena) { this.quincena = quincena; }
+
+    public String getNombreRecibo() { return nombreRecibo; }
+    public void setNombreRecibo(String nombreRecibo) { this.nombreRecibo = nombreRecibo; }
 }

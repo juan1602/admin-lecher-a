@@ -14,7 +14,6 @@ public class CuentaPersonalizadaService {
     private final CuentaPersonalizadaRepository cuentaRepository;
     private final IngresoCuentaRepository ingresoRepository;
     private final DescuentoCuentaPersonalRepository descuentoRepository;
-    private final ReciboEmpresaRepository reciboRepository;
     private final QuincenaRepository quincenaRepository;
 
     public List<CuentaPersonalizada> listarTodas() {
@@ -32,28 +31,29 @@ public class CuentaPersonalizadaService {
         cuentaRepository.deleteById(id);
     }
 
-    // ── Ingresos (recibos vinculados) ──────────────────────────────────────
+    // ── Ingresos (por nombre de empresa, agrupa todos los días) ───────────
 
     public List<IngresoCuenta> listarIngresos(Long cuentaId, Long quincenaId) {
-        return ingresoRepository.findByCuentaIdAndReciboQuincenaId(cuentaId, quincenaId);
+        return ingresoRepository.findByCuentaIdAndQuincenaId(cuentaId, quincenaId);
     }
 
     @Transactional
-    public void agregarIngreso(Long cuentaId, Long reciboId) {
-        if (ingresoRepository.existsByCuentaIdAndReciboId(cuentaId, reciboId)) return;
+    public void agregarIngreso(Long cuentaId, Long quincenaId, String nombreRecibo) {
+        if (ingresoRepository.existsByCuentaIdAndQuincenaIdAndNombreRecibo(cuentaId, quincenaId, nombreRecibo)) return;
         CuentaPersonalizada cuenta = cuentaRepository.findById(cuentaId)
             .orElseThrow(() -> new RuntimeException("Cuenta no encontrada: " + cuentaId));
-        ReciboEmpresa recibo = reciboRepository.findById(reciboId)
-            .orElseThrow(() -> new RuntimeException("Recibo no encontrado: " + reciboId));
+        Quincena quincena = quincenaRepository.findById(quincenaId)
+            .orElseThrow(() -> new RuntimeException("Quincena no encontrada: " + quincenaId));
         IngresoCuenta ingreso = new IngresoCuenta();
         ingreso.setCuenta(cuenta);
-        ingreso.setRecibo(recibo);
+        ingreso.setQuincena(quincena);
+        ingreso.setNombreRecibo(nombreRecibo);
         ingresoRepository.save(ingreso);
     }
 
     @Transactional
-    public void quitarIngreso(Long cuentaId, Long reciboId) {
-        ingresoRepository.deleteByCuentaIdAndReciboId(cuentaId, reciboId);
+    public void quitarIngreso(Long cuentaId, Long quincenaId, String nombreRecibo) {
+        ingresoRepository.deleteByCuentaIdAndQuincenaIdAndNombreRecibo(cuentaId, quincenaId, nombreRecibo);
     }
 
     // ── Descuentos ─────────────────────────────────────────────────────────

@@ -14,8 +14,8 @@ export default function CuentasPersonalizadas() {
   const [quincenaId, setQuincenaId]         = useState('')
   const [cuentas, setCuentas]               = useState([])
   const [cuentaActiva, setCuentaActiva]     = useState(null)
-  const [recibos, setRecibos]               = useState([])          // todos los recibos de la quincena
-  const [ingresosIds, setIngresosIds]       = useState(new Set())   // IDs de recibos vinculados
+  const [recibos, setRecibos]               = useState([])          // todos los recibos diarios de la quincena
+  const [ingresosNombres, setIngresosNombres] = useState(new Set()) // nombres de empresa vinculados
   const [descuentos, setDescuentos]         = useState([])
   const [nuevaCuenta, setNuevaCuenta]       = useState('')
   const [formDesc, setFormDesc]             = useState({ descripcion: '', valor: '' })
@@ -44,7 +44,7 @@ export default function CuentasPersonalizadas() {
         api.get(`/cuentas-personalizadas/${cuentaId}/ingresos?quincenaId=${qId}`),
         api.get(`/cuentas-personalizadas/${cuentaId}/descuentos?quincenaId=${qId}`),
       ])
-      setIngresosIds(new Set(ri.data.map(i => i.recibo.id)))
+      setIngresosNombres(new Set(ri.data.map(i => i.nombreRecibo)))
       setDescuentos(rd.data)
     } catch (e) {
       console.error(e)
@@ -53,7 +53,7 @@ export default function CuentasPersonalizadas() {
 
   function seleccionarCuenta(cuenta) {
     setCuentaActiva(cuenta)
-    setIngresosIds(new Set())
+    setIngresosNombres(new Set())
     setDescuentos([])
     if (quincenaId) cargarDetalle(cuenta.id, quincenaId)
     setVistaMovil('detalle')
@@ -77,22 +77,27 @@ export default function CuentasPersonalizadas() {
       setCuentas(prev => prev.filter(c => c.id !== id))
       if (cuentaActiva?.id === id) {
         setCuentaActiva(null)
-        setIngresosIds(new Set())
+        setIngresosNombres(new Set())
         setDescuentos([])
         setVistaMovil('lista')
       }
     } catch (e) { console.error(e) }
   }
 
-  async function toggleIngreso(reciboId) {
+  async function toggleIngreso(nombreRecibo) {
     if (!cuentaActiva || !quincenaId) return
     try {
-      if (ingresosIds.has(reciboId)) {
-        await api.delete(`/cuentas-personalizadas/${cuentaActiva.id}/ingresos/${reciboId}`)
-        setIngresosIds(prev => { const s = new Set(prev); s.delete(reciboId); return s })
+      if (ingresosNombres.has(nombreRecibo)) {
+        await api.delete(
+          `/cuentas-personalizadas/${cuentaActiva.id}/ingresos?quincenaId=${quincenaId}&nombreRecibo=${encodeURIComponent(nombreRecibo)}`
+        )
+        setIngresosNombres(prev => { const s = new Set(prev); s.delete(nombreRecibo); return s })
       } else {
-        await api.post(`/cuentas-personalizadas/${cuentaActiva.id}/ingresos/${reciboId}`)
-        setIngresosIds(prev => new Set([...prev, reciboId]))
+        await api.post(
+          `/cuentas-personalizadas/${cuentaActiva.id}/ingresos?quincenaId=${quincenaId}`,
+          { nombreRecibo }
+        )
+        setIngresosNombres(prev => new Set([...prev, nombreRecibo]))
       }
     } catch (e) { console.error(e) }
   }
@@ -116,11 +121,23 @@ export default function CuentasPersonalizadas() {
     } catch (e) { console.error(e) }
   }
 
+  // Agrupar recibos diarios por nombreRecibo
+  const recibosAgrupados = Object.values(
+    recibos.reduce((acc, r) => {
+      const key = r.nombreRecibo
+      if (!acc[key]) acc[key] = { nombre: key, litros: 0, valor: 0 }
+      acc[key].litros += r.litrosRecibidos || 0
+      acc[key].valor  += valorRecibo(r)
+      return acc
+    }, {})
+  ).sort((a, b) => a.nombre.localeCompare(b.nombre))
+
   // Totales
-  const recibosSeleccionados = recibos.filter(r => ingresosIds.has(r.id))
-  const totalIngresos        = recibosSeleccionados.reduce((s, r) => s + valorRecibo(r), 0)
-  const totalDescuentos      = descuentos.reduce((s, d) => s + d.valor, 0)
-  const saldoFinal           = totalIngresos - totalDescuentos
+  const totalIngresos   = recibosAgrupados
+    .filter(g => ingresosNombres.has(g.nombre))
+    .reduce((s, g) => s + g.valor, 0)
+  const totalDescuentos = descuentos.reduce((s, d) => s + d.valor, 0)
+  const saldoFinal      = totalIngresos - totalDescuentos
 
   // ── Sub-componentes de UI ────────────────────────────────────────────────
 
@@ -210,16 +227,15 @@ export default function CuentasPersonalizadas() {
             <span style={{ fontWeight: '700', fontSize: '13px', color: '#27ae60' }}>${fmt(totalIngresos)}</span>
           </div>
           <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-            {recibos.length === 0 && (
+            {recibosAgrupados.length === 0 && (
               <p style={{ textAlign: 'center', color: '#bbb', padding: '30px', fontSize: '13px', margin: 0 }}>
                 {quincenaId ? 'Sin recibos en esta quincena' : 'Selecciona una quincena'}
               </p>
             )}
-            {recibos.map(r => {
-              const seleccionado = ingresosIds.has(r.id)
-              const valor = valorRecibo(r)
+            {recibosAgrupados.map(g => {
+              const seleccionado = ingresosNombres.has(g.nombre)
               return (
-                <div key={r.id} onClick={() => toggleIngreso(r.id)} style={{
+                <div key={g.nombre} onClick={() => toggleIngreso(g.nombre)} style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
                   padding: '12px 18px', cursor: 'pointer',
                   borderBottom: '1px solid #f5f5f5',
@@ -236,14 +252,14 @@ export default function CuentasPersonalizadas() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '13px', fontWeight: '500', color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {r.nombreRecibo}
+                      {g.nombre}
                     </div>
                     <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
-                      {fmt(r.litrosRecibidos)} L × ${fmt(r.soloTransporte ? r.precioTransporte : r.precioLitro)}
+                      {fmt(g.litros)} L total quincena
                     </div>
                   </div>
                   <div style={{ fontSize: '13px', fontWeight: '600', color: seleccionado ? '#27ae60' : '#999', flexShrink: 0 }}>
-                    ${fmt(valor)}
+                    ${fmt(g.valor)}
                   </div>
                 </div>
               )
