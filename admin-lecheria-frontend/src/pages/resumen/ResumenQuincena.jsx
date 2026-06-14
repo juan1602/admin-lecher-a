@@ -15,6 +15,7 @@ function ResumenQuincena() {
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null)
+  const [excedentes, setExcedentes] = useState({}) // { proveedorId: valorPorLitro }
 
   useEffect(() => {
     api.get('/quincenas')
@@ -25,6 +26,7 @@ function ResumenQuincena() {
           setQuincenaId(String(abierta.id))
           setQuincenaTexto(abierta.textoQuincena || '')
           cargarResumen(abierta.id)
+          cargarExcedentes(abierta.id)
         }
       })
       .catch(() => setError('No se pudo conectar con el servidor. Verifica que el backend esté corriendo en el puerto 8092.'))
@@ -46,13 +48,39 @@ function ResumenQuincena() {
     }
   }
 
+  const cargarExcedentes = async (id) => {
+    try {
+      await api.post(`/excedentes/quincena/${id}/heredar`)
+      const r = await api.get(`/excedentes/quincena/${id}`)
+      const map = {}
+      r.data.forEach(e => { map[e.proveedor.id] = e.valorPorLitro })
+      setExcedentes(map)
+    } catch {}
+  }
+
+  const handleExcedenteBlur = async (proveedorId, valor) => {
+    const v = parseFloat(valor) || 0
+    try {
+      if (v > 0) {
+        await api.post(`/excedentes/quincena/${quincenaId}/proveedor/${proveedorId}`, { valorPorLitro: v })
+      } else {
+        await api.delete(`/excedentes/quincena/${quincenaId}/proveedor/${proveedorId}`)
+      }
+      cargarExcedentes(quincenaId)
+    } catch {}
+  }
+
   const handleQuincenaChange = (e) => {
     const q = quincenas.find(q => String(q.id) === e.target.value)
     setQuincenaId(e.target.value)
     setQuincenaTexto(q?.textoQuincena || '')
     setResumen(null)
     setError(null)
-    if (e.target.value) cargarResumen(e.target.value)
+    setExcedentes({})
+    if (e.target.value) {
+      cargarResumen(e.target.value)
+      cargarExcedentes(e.target.value)
+    }
   }
 
   return (
@@ -87,10 +115,12 @@ function ResumenQuincena() {
 
       {resumen && !cargando && (() => {
         const provsFiltrados = resumen.proveedores.filter(p => !p.rutaId || rutasSeleccionadas.has(p.rutaId))
-        const totL  = provsFiltrados.reduce((s, p) => s + p.totalLitros, 0)
-        const totBruto = provsFiltrados.reduce((s, p) => s + p.valorBruto, 0)
-        const totDesc  = provsFiltrados.reduce((s, p) => s + p.descuento4x1000 + p.totalOtrosDescuentos, 0)
-        const totNeto  = provsFiltrados.reduce((s, p) => s + p.valorNeto, 0)
+        const totL      = provsFiltrados.reduce((s, p) => s + p.totalLitros, 0)
+        const totBruto  = provsFiltrados.reduce((s, p) => s + p.valorBruto, 0)
+        const totDesc   = provsFiltrados.reduce((s, p) => s + p.descuento4x1000 + p.totalOtrosDescuentos, 0)
+        const totNeto   = provsFiltrados.reduce((s, p) => s + p.valorNeto, 0)
+        const totExced  = provsFiltrados.reduce((s, p) => s + p.totalLitros * (excedentes[p.proveedorId] || 0), 0)
+
         return (
         <>
           {/* Tarjetas de totales globales */}
@@ -101,7 +131,7 @@ function ResumenQuincena() {
             <Tarjeta label="TOTAL A PAGAR" valor={`$${fmt(totNeto)}`} color="#1b5e20" grande />
           </div>
 
-          {/* Título estilo Excel */}
+          {/* Tabla principal de proveedores */}
           <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
             <div style={{
               background: '#1a1a2e', color: 'white', padding: '14px 20px',
@@ -175,13 +205,68 @@ function ResumenQuincena() {
                   <td style={{ ...td, textAlign: 'right', color: 'white' }}>{fmtL(totL)}</td>
                   <td style={td}></td>
                   <td style={{ ...td, textAlign: 'right', color: 'white' }}>${fmt(totBruto)}</td>
-                  <td style={{ ...td, textAlign: 'right', color: '#ef9a9a' }}>
-                    -{`$${fmt(totDesc)}`}
-                  </td>
-                  <td style={{ ...td, textAlign: 'right', color: '#a5d6a7', fontSize: '16px' }}>
-                    ${fmt(totNeto)}
-                  </td>
+                  <td style={{ ...td, textAlign: 'right', color: '#ef9a9a' }}>-${fmt(totDesc)}</td>
+                  <td style={{ ...td, textAlign: 'right', color: '#a5d6a7', fontSize: '16px' }}>${fmt(totNeto)}</td>
                   <td style={td}></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* Tabla de excedentes */}
+          <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden', marginTop: '24px' }}>
+            <div style={{ background: '#4a1a2e', color: 'white', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: '600', fontSize: '14px', letterSpacing: '0.5px' }}>
+                EXCEDENTES PAGADOS — {resumen.textoQuincena?.toUpperCase()}
+              </span>
+              <span style={{ fontSize: '12px', color: '#f8bbd0' }}>
+                Escribe el excedente por litro y haz clic fuera para guardar
+              </span>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#f5f5f5', borderBottom: '2px solid #e0e0e0' }}>
+                  <th style={th}>Proveedor</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Litros</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Excedente $/litro</th>
+                  <th style={{ ...th, textAlign: 'right', color: '#c62828' }}>Total excedente</th>
+                </tr>
+              </thead>
+              <tbody>
+                {provsFiltrados.map((p, i) => {
+                  const excVal = excedentes[p.proveedorId] || 0
+                  const totalExc = p.totalLitros * excVal
+                  return (
+                    <tr key={p.proveedorId} style={{ borderBottom: '1px solid #f0f0f0', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
+                      <td style={{ ...td, fontWeight: '500' }}>{p.nombre}</td>
+                      <td style={{ ...td, textAlign: 'right', color: '#666' }}>{fmtL(p.totalLitros)}</td>
+                      <td style={{ ...td, textAlign: 'right' }}>
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          key={`exc-${p.proveedorId}-${excVal}`}
+                          defaultValue={excVal > 0 ? excVal : ''}
+                          onBlur={e => handleExcedenteBlur(p.proveedorId, e.target.value)}
+                          placeholder="0"
+                          style={{ width: '110px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', textAlign: 'right', fontSize: '14px', boxSizing: 'border-box' }}
+                        />
+                      </td>
+                      <td style={{ ...td, textAlign: 'right', fontWeight: '600', color: totalExc > 0 ? '#c62828' : '#ccc' }}>
+                        {totalExc > 0 ? `-$${fmt(totalExc)}` : '—'}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: '#fce4ec', borderTop: '2px solid #f48fb1' }}>
+                  <td colSpan={3} style={{ ...td, fontWeight: '700', color: '#880e4f', fontSize: '13px', letterSpacing: '0.5px' }}>
+                    TOTAL EXCEDENTES
+                  </td>
+                  <td style={{ ...td, textAlign: 'right', fontWeight: '700', color: '#c62828', fontSize: '15px' }}>
+                    {totExced > 0 ? `-$${fmt(totExced)}` : '$0'}
+                  </td>
                 </tr>
               </tfoot>
             </table>
