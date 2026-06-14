@@ -18,6 +18,8 @@ function CuentasGenerales() {
   const [rindeTotal, setRindeTotal] = useState(0)
   const [descuentos, setDescuentos] = useState([])
   const [combustibles, setCombustibles] = useState([])
+  const [excedentesData, setExcedentesData] = useState([])
+  const [resumenProveedores, setResumenProveedores] = useState([])
   const [formDesc, setFormDesc] = useState({ nombre: '', valor: '' })
   const [mostrarFormTrans, setMostrarFormTrans] = useState(false)
   const [mostrarFormRinde, setMostrarFormRinde] = useState(false)
@@ -52,11 +54,15 @@ function CuentasGenerales() {
     if (!id || !ctx) return
     setCargando(true)
     try {
-      const [vistaRes] = await Promise.all([
-        api.get(`/grupos-rinde/vista-completa/${id}?rutaIds=${ctx.replace(/,/g, ',')}`),
+      const [vistaRes, excRes, resumenRes] = await Promise.all([
+        api.get(`/grupos-rinde/vista-completa/${id}?rutaIds=${ctx}`),
+        api.get(`/excedentes/quincena/${id}`),
+        api.get(`/recolecciones/resumen/${id}`)
       ])
       setTransporteTotal(vistaRes.data.transporteTotal || 0)
       setRindeTotal(vistaRes.data.rindeValorTotal || 0)
+      setExcedentesData(excRes.data)
+      setResumenProveedores(resumenRes.data.proveedores || [])
       await cargarDescuentos(id, ctx)
       await cargarCombustibles(id, ctx)
     } catch {}
@@ -89,6 +95,8 @@ function CuentasGenerales() {
     setQuincenaTexto(q?.textoQuincena || '')
     setDescuentos([])
     setCombustibles([])
+    setExcedentesData([])
+    setResumenProveedores([])
     setTransporteTotal(0)
     setRindeTotal(0)
   }
@@ -151,8 +159,18 @@ function CuentasGenerales() {
   const descTrans = descuentos.filter(d => d.tipo === 'TRANSPORTE')
   const descRinde = descuentos.filter(d => d.tipo === 'RINDE')
   const totalCombustibles = combustibles.reduce((s, c) => s + (c.valor || 0), 0)
+
+  // Excedentes filtrados por las rutas del contexto actual
+  const rutasContextoIds = new Set(rutaContexto.split(',').map(Number).filter(Boolean))
+  const totalExcedentes = excedentesData.reduce((sum, exc) => {
+    const rutaId = exc.proveedor?.ruta?.id
+    if (!rutaId || !rutasContextoIds.has(rutaId)) return sum
+    const prov = resumenProveedores.find(p => p.proveedorId === exc.proveedor.id)
+    return sum + (prov?.totalLitros || 0) * (exc.valorPorLitro || 0)
+  }, 0)
+
   const totalDescTrans = descTrans.reduce((s, d) => s + (d.valor || 0), 0) + totalCombustibles
-  const totalDescRinde = descRinde.reduce((s, d) => s + (d.valor || 0), 0)
+  const totalDescRinde = descRinde.reduce((s, d) => s + (d.valor || 0), 0) + totalExcedentes
   const netoTrans = transporteTotal - totalDescTrans
   const netoRinde = rindeTotal - totalDescRinde
 
@@ -306,9 +324,19 @@ function CuentasGenerales() {
               <div style={{ padding: '16px 20px' }}>
                 <div style={{ fontSize: '12px', fontWeight: '600', color: '#888', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Descuentos</div>
 
+                {totalExcedentes > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+                    <div>
+                      <span style={{ fontSize: '14px', color: '#333' }}>Excedentes</span>
+                      <span style={{ marginLeft: '6px', fontSize: '11px', background: '#fce4ec', color: '#880e4f', padding: '1px 6px', borderRadius: '4px' }}>auto</span>
+                    </div>
+                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#c62828' }}>-${fmt(totalExcedentes)}</span>
+                  </div>
+                )}
+
                 {descRinde.map((d, i) => filaDescuento(d, i))}
 
-                {descRinde.length === 0 && !mostrarFormRinde && (
+                {descRinde.length === 0 && totalExcedentes === 0 && !mostrarFormRinde && (
                   <div style={{ padding: '16px 0', textAlign: 'center', color: '#bbb', fontSize: '13px' }}>Sin descuentos registrados</div>
                 )}
 
@@ -322,6 +350,24 @@ function CuentasGenerales() {
                   <span style={{ fontSize: '14px', fontWeight: '700', color: '#1a1a2e' }}>NETO RINDE</span>
                   <span style={{ fontSize: '20px', fontWeight: '700', color: netoRinde >= 0 ? '#1b5e20' : '#c62828' }}>${fmt(netoRinde)}</span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* TOTAL FINAL */}
+          <div style={{ background: '#1a1a2e', borderRadius: '12px', padding: '20px 28px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: '11px', color: '#888', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '4px' }}>
+                Neto transporte + Neto rinde · {nombreRutas}
+              </div>
+              <div style={{ fontSize: '13px', color: '#aaa' }}>
+                ${fmt(netoTrans)} + ${fmt(netoRinde)}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>TOTAL FINAL</div>
+              <div style={{ fontSize: '32px', fontWeight: '700', color: (netoTrans + netoRinde) >= 0 ? '#a5d6a7' : '#ef9a9a' }}>
+                ${fmt(netoTrans + netoRinde)}
               </div>
             </div>
           </div>
