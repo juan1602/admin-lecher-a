@@ -11,8 +11,9 @@ const MENU = [
   { path: '/recolecciones',label: 'Recolecciones' },
   { path: '/recibos',      label: 'Recibos' },
   { path: '/descuentos',   label: 'Descuentos' },
-  { path: '/transporte',   label: 'Transporte' },
-  { path: '/resumen',      label: 'Resumen Quincena' },
+  { path: '/transporte',        label: 'Transporte' },
+  { path: '/cuentas-generales', label: 'Cuentas Generales' },
+  { path: '/resumen',           label: 'Resumen Quincena' },
 ]
 
 function useIsMobile() {

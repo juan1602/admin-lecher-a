@@ -11,6 +11,7 @@ import Recibos from './pages/recibos/Recibos'
 import ResumenQuincena from './pages/resumen/ResumenQuincena'
 import Transporte from './pages/transporte/Transporte'
 import Descuentos from './pages/descuentos/Descuentos'
+import CuentasGenerales from './pages/cuentas/CuentasGenerales'
 import Inicio from './pages/inicio/Inicio'
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
         <Route path="/resumen" element={<ResumenQuincena />} />
         <Route path="/transporte" element={<Transporte />} />
         <Route path="/descuentos" element={<Descuentos />} />
+        <Route path="/cuentas-generales" element={<CuentasGenerales />} />
       </Routes>
     </Layout>
     </RutaVistaProvider>
