@@ -1,0 +1,87 @@
+package com.smartlech.adminlecheria.controller;
+
+import com.smartlech.adminlecheria.entity.*;
+import com.smartlech.adminlecheria.service.CuentaPersonalizadaService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/cuentas-personalizadas")
+@RequiredArgsConstructor
+@CrossOrigin(origins = "*")
+public class CuentaPersonalizadaController {
+
+    private final CuentaPersonalizadaService service;
+
+    // ── Cuentas ────────────────────────────────────────────────────────────
+
+    @GetMapping
+    public List<CuentaPersonalizada> listar() {
+        return service.listarTodas();
+    }
+
+    @PostMapping
+    public ResponseEntity<CuentaPersonalizada> crear(@RequestBody CuentaPersonalizada cuenta) {
+        return ResponseEntity.ok(service.guardar(cuenta));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        service.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Ingresos ──────────────────────────────────────────────────────────
+
+    @GetMapping("/{id}/ingresos")
+    public List<IngresoCuenta> listarIngresos(
+            @PathVariable Long id,
+            @RequestParam Long quincenaId) {
+        return service.listarIngresos(id, quincenaId);
+    }
+
+    @PostMapping("/{id}/ingresos/{reciboId}")
+    public ResponseEntity<Void> agregarIngreso(
+            @PathVariable Long id,
+            @PathVariable Long reciboId) {
+        service.agregarIngreso(id, reciboId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{id}/ingresos/{reciboId}")
+    public ResponseEntity<Void> quitarIngreso(
+            @PathVariable Long id,
+            @PathVariable Long reciboId) {
+        service.quitarIngreso(id, reciboId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Descuentos ────────────────────────────────────────────────────────
+
+    @GetMapping("/{id}/descuentos")
+    public List<DescuentoCuentaPersonal> listarDescuentos(
+            @PathVariable Long id,
+            @RequestParam Long quincenaId) {
+        return service.listarDescuentos(id, quincenaId);
+    }
+
+    @PostMapping("/{id}/descuentos")
+    public ResponseEntity<DescuentoCuentaPersonal> agregarDescuento(
+            @PathVariable Long id,
+            @RequestParam Long quincenaId,
+            @RequestBody Map<String, Object> body) {
+        DescuentoCuentaPersonal d = new DescuentoCuentaPersonal();
+        d.setDescripcion((String) body.get("descripcion"));
+        d.setValor(((Number) body.get("valor")).doubleValue());
+        return ResponseEntity.ok(service.agregarDescuento(id, quincenaId, d));
+    }
+
+    @DeleteMapping("/descuentos/{id}")
+    public ResponseEntity<Void> eliminarDescuento(@PathVariable Long id) {
+        service.eliminarDescuento(id);
+        return ResponseEntity.noContent().build();
+    }
+}

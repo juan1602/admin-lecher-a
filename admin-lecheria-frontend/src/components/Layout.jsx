@@ -12,7 +12,8 @@ const MENU = [
   { path: '/recibos',      label: 'Recibos' },
   { path: '/descuentos',   label: 'Descuentos' },
   { path: '/transporte',        label: 'Transporte' },
-  { path: '/cuentas-generales', label: 'Cuentas Generales' },
+  { path: '/cuentas-generales',     label: 'Cuentas Generales' },
+  { path: '/cuentas-personalizadas', label: 'Cuentas Personalizadas' },
   { path: '/resumen',           label: 'Resumen Quincena' },
 ]
 

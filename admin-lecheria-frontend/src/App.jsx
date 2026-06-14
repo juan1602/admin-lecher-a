@@ -12,6 +12,7 @@ import ResumenQuincena from './pages/resumen/ResumenQuincena'
 import Transporte from './pages/transporte/Transporte'
 import Descuentos from './pages/descuentos/Descuentos'
 import CuentasGenerales from './pages/cuentas/CuentasGenerales'
+import CuentasPersonalizadas from './pages/cuentas/CuentasPersonalizadas'
 import Inicio from './pages/inicio/Inicio'
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
         <Route path="/transporte" element={<Transporte />} />
         <Route path="/descuentos" element={<Descuentos />} />
         <Route path="/cuentas-generales" element={<CuentasGenerales />} />
+        <Route path="/cuentas-personalizadas" element={<CuentasPersonalizadas />} />
       </Routes>
     </Layout>
     </RutaVistaProvider>
