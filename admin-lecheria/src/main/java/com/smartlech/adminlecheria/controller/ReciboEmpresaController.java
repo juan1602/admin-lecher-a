@@ -56,12 +56,17 @@ public class ReciboEmpresaController {
         existente.setFecha(recibo.getFecha());
         existente.setRuta(recibo.getRuta());
         ReciboEmpresa guardado = reciboEmpresaService.guardar(existente);
+        Long quincenaId = existente.getQuincena().getId();
+        String nombre = existente.getNombreRecibo();
+        // Propagar precio a todos los días del mismo recibo en la quincena
+        reciboEmpresaService.propagarPrecio(
+            quincenaId, nombre,
+            recibo.getPrecioLitro(),
+            recibo.getPrecioTransporte(),
+            recibo.getSoloTransporte()
+        );
         if (recibo.getRuta() != null) {
-            reciboEmpresaService.propagarRuta(
-                existente.getQuincena().getId(),
-                existente.getNombreRecibo(),
-                recibo.getRuta()
-            );
+            reciboEmpresaService.propagarRuta(quincenaId, nombre, recibo.getRuta());
         }
         return ResponseEntity.ok(guardado);
     }

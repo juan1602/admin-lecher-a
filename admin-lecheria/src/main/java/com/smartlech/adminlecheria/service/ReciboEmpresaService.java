@@ -75,6 +75,20 @@ public class ReciboEmpresaService {
         }
     }
 
+    public void propagarPrecio(Long quincenaId, String nombreRecibo,
+                               Double precioLitro, Double precioTransporte, Boolean soloTransporte) {
+        List<ReciboEmpresa> todos = reciboEmpresaRepository.findByQuincenaId(quincenaId);
+        for (ReciboEmpresa r : todos) {
+            if (r.getNombreRecibo() != null &&
+                r.getNombreRecibo().trim().equalsIgnoreCase(nombreRecibo.trim())) {
+                r.setPrecioLitro(precioLitro);
+                r.setPrecioTransporte(precioTransporte);
+                r.setSoloTransporte(soloTransporte != null && soloTransporte);
+                reciboEmpresaRepository.save(r);
+            }
+        }
+    }
+
     public TransporteResumenDTO resumenTransporte(Long quincenaId) {
         Quincena quincena = quincenaRepository.findById(quincenaId)
                 .orElseThrow(() -> new RuntimeException("Quincena no encontrada: " + quincenaId));
