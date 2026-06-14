@@ -16,8 +16,10 @@ public class CombustibleController {
     private final CombustibleService combustibleService;
 
     @GetMapping("/quincena/{quincenaId}")
-    public List<Combustible> listarPorQuincena(@PathVariable Long quincenaId) {
-        return combustibleService.listarPorQuincena(quincenaId);
+    public List<Combustible> listarPorQuincena(
+            @PathVariable Long quincenaId,
+            @RequestParam String rutaContexto) {
+        return combustibleService.listarPorQuincenaYContexto(quincenaId, rutaContexto);
     }
 
     @PostMapping

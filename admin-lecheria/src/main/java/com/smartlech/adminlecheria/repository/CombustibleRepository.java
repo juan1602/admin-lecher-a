@@ -5,5 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface CombustibleRepository extends JpaRepository<Combustible, Long> {
-    List<Combustible> findByQuincenaId(Long quincenaId);
+    List<Combustible> findByQuincenaIdAndRutaContexto(Long quincenaId, String rutaContexto);
 }

@@ -20,6 +20,10 @@ public class Combustible {
     @Column(nullable = false)
     private Double valor;
 
+    // IDs de rutas ordenadas y separadas por coma, ej: "1,2" o "3"
+    @Column
+    private String rutaContexto;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -31,4 +35,7 @@ public class Combustible {
 
     public Double getValor() { return valor; }
     public void setValor(Double valor) { this.valor = valor; }
+
+    public String getRutaContexto() { return rutaContexto; }
+    public void setRutaContexto(String rutaContexto) { this.rutaContexto = rutaContexto; }
 }

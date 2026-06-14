@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface DescuentoCuentaRepository extends JpaRepository<DescuentoCuenta, Long> {
-    List<DescuentoCuenta> findByQuincenaId(Long quincenaId);
-    List<DescuentoCuenta> findByQuincenaIdAndTipo(Long quincenaId, String tipo);
-    boolean existsByQuincenaIdAndTipoAndNombre(Long quincenaId, String tipo, String nombre);
+    List<DescuentoCuenta> findByQuincenaIdAndRutaContexto(Long quincenaId, String rutaContexto);
+    boolean existsByQuincenaIdAndTipoAndNombreAndRutaContexto(Long quincenaId, String tipo, String nombre, String rutaContexto);
 }

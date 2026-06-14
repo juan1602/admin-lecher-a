@@ -17,13 +17,17 @@ public class DescuentoCuentaController {
     private final DescuentoCuentaService descuentoService;
 
     @GetMapping("/quincena/{quincenaId}")
-    public List<DescuentoCuenta> listarPorQuincena(@PathVariable Long quincenaId) {
-        return descuentoService.listarPorQuincena(quincenaId);
+    public List<DescuentoCuenta> listarPorQuincena(
+            @PathVariable Long quincenaId,
+            @RequestParam String rutaContexto) {
+        return descuentoService.listarPorQuincenaYContexto(quincenaId, rutaContexto);
     }
 
     @PostMapping("/quincena/{quincenaId}/heredar")
-    public ResponseEntity<Void> heredar(@PathVariable Long quincenaId) {
-        descuentoService.heredarDeQuincenaAnterior(quincenaId);
+    public ResponseEntity<Void> heredar(
+            @PathVariable Long quincenaId,
+            @RequestParam String rutaContexto) {
+        descuentoService.heredarDeQuincenaAnterior(quincenaId, rutaContexto);
         return ResponseEntity.ok().build();
     }
 

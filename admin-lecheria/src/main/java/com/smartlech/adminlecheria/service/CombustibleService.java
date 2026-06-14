@@ -12,8 +12,8 @@ public class CombustibleService {
 
     private final CombustibleRepository combustibleRepository;
 
-    public List<Combustible> listarPorQuincena(Long quincenaId) {
-        return combustibleRepository.findByQuincenaId(quincenaId);
+    public List<Combustible> listarPorQuincenaYContexto(Long quincenaId, String rutaContexto) {
+        return combustibleRepository.findByQuincenaIdAndRutaContexto(quincenaId, rutaContexto);
     }
 
     public Combustible guardar(Combustible combustible) {

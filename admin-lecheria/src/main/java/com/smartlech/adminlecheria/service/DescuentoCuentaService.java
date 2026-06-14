@@ -16,8 +16,8 @@ public class DescuentoCuentaService {
     private final DescuentoCuentaRepository descuentoRepository;
     private final QuincenaRepository quincenaRepository;
 
-    public List<DescuentoCuenta> listarPorQuincena(Long quincenaId) {
-        return descuentoRepository.findByQuincenaId(quincenaId);
+    public List<DescuentoCuenta> listarPorQuincenaYContexto(Long quincenaId, String rutaContexto) {
+        return descuentoRepository.findByQuincenaIdAndRutaContexto(quincenaId, rutaContexto);
     }
 
     public DescuentoCuenta guardar(DescuentoCuenta descuento) {
@@ -36,8 +36,8 @@ public class DescuentoCuentaService {
         descuentoRepository.deleteById(id);
     }
 
-    // Copia los descuentos de la quincena anterior que no existan ya (por nombre+tipo) en la actual
-    public void heredarDeQuincenaAnterior(Long quincenaId) {
+    // Copia descuentos del mismo rutaContexto desde la quincena anterior
+    public void heredarDeQuincenaAnterior(Long quincenaId, String rutaContexto) {
         Quincena actual = quincenaRepository.findById(quincenaId)
             .orElseThrow(() -> new RuntimeException("Quincena no encontrada: " + quincenaId));
 
@@ -48,14 +48,18 @@ public class DescuentoCuentaService {
 
         if (anterior == null) return;
 
-        List<DescuentoCuenta> anteriores = descuentoRepository.findByQuincenaId(anterior.getId());
+        List<DescuentoCuenta> anteriores = descuentoRepository
+            .findByQuincenaIdAndRutaContexto(anterior.getId(), rutaContexto);
+
         for (DescuentoCuenta d : anteriores) {
-            if (!descuentoRepository.existsByQuincenaIdAndTipoAndNombre(quincenaId, d.getTipo(), d.getNombre())) {
+            if (!descuentoRepository.existsByQuincenaIdAndTipoAndNombreAndRutaContexto(
+                    quincenaId, d.getTipo(), d.getNombre(), rutaContexto)) {
                 DescuentoCuenta nuevo = new DescuentoCuenta();
                 nuevo.setQuincena(actual);
                 nuevo.setTipo(d.getTipo());
                 nuevo.setNombre(d.getNombre());
                 nuevo.setValor(d.getValor());
+                nuevo.setRutaContexto(rutaContexto);
                 descuentoRepository.save(nuevo);
             }
         }
