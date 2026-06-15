@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import api from '../../api/axios'
 import { useRutaVista } from '../../context/RutaVistaContext'
+import { pdfCuentasGenerales } from '../../utils/pdf'
 
 const fmt = (n) => Math.round(n).toLocaleString('es-CO')
 
@@ -231,8 +232,15 @@ function CuentasGenerales() {
 
   return (
     <div>
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h2 style={{ margin: 0 }}>Cuentas Generales</h2>
+        <button
+          onClick={() => pdfCuentasGenerales({ quincenaTexto, rutaNombres: nombreRutas, transporteTotal, rindeTotal, descuentos, combustibles, totalExcedentes })}
+          disabled={!quincenaId}
+          style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: '600', cursor: quincenaId ? 'pointer' : 'not-allowed', opacity: quincenaId ? 1 : 0.5 }}
+        >
+          PDF
+        </button>
       </div>
 
       {/* Selectores: quincena + rutas */}

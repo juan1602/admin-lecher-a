@@ -1,6 +1,7 @@
 import { useState, useEffect, Fragment } from 'react'
 import api from '../../api/axios'
 import { useRutaVista } from '../../context/RutaVistaContext'
+import { pdfTransporte } from '../../utils/pdf'
 
 const fmt  = (n) => Math.round(n ?? 0).toLocaleString('es-CO')
 const fmtL = (n) => Number(n ?? 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })
@@ -116,11 +117,20 @@ export default function Transporte() {
 
   return (
     <div>
-      <div style={{ marginBottom: '20px' }}>
-        <h2 style={{ margin: 0 }}>Control de Transporte</h2>
-        <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
-          Litros entregados vs. recogidos · Rinde por grupo
-        </p>
+      <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div>
+          <h2 style={{ margin: 0 }}>Control de Transporte</h2>
+          <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
+            Litros entregados vs. recogidos · Rinde por grupo
+          </p>
+        </div>
+        <button
+          onClick={() => pdfTransporte({ vistaCompleta, resumen })}
+          disabled={!vistaCompleta && !resumen}
+          style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: '600', cursor: (vistaCompleta || resumen) ? 'pointer' : 'not-allowed', opacity: (vistaCompleta || resumen) ? 1 : 0.5 }}
+        >
+          PDF
+        </button>
       </div>
 
       {/* Selector quincena */}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
+import { pdfCuentaPersonalizada } from '../../utils/pdf'
 
 const fmt = v => Math.round(v ?? 0).toLocaleString('es-CO')
 
@@ -256,6 +257,17 @@ export default function CuentasPersonalizadas() {
           ←
         </button>
         <h2 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#1a1a2e', flex: 1 }}>{cuentaActiva.nombre}</h2>
+        <button
+          onClick={() => pdfCuentaPersonalizada({
+            cuentaNombre: cuentaActiva.nombre,
+            quincenaTexto: quincenas.find(q => String(q.id) === quincenaId)?.textoQuincena || '',
+            ingresos: ingresosSeleccionados,
+            descuentos,
+          })}
+          style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}
+        >
+          PDF
+        </button>
         <select value={quincenaId} onChange={e => setQuincenaId(e.target.value)}
           style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e0e0e0', fontSize: '13px', color: '#333', outline: 'none' }}>
           <option value="">— Quincena —</option>
