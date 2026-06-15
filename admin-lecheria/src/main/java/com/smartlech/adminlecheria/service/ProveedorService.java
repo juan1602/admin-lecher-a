@@ -45,4 +45,10 @@ public class ProveedorService {
         proveedor.setActivo(false);
         proveedorRepository.save(proveedor);
     }
+
+    public Proveedor toggleActivo(Long id) {
+        Proveedor proveedor = buscarPorId(id);
+        proveedor.setActivo(!Boolean.TRUE.equals(proveedor.getActivo()));
+        return proveedorRepository.save(proveedor);
+    }
 }

@@ -8,6 +8,7 @@ function Proveedores() {
   const [rutas, setRutas] = useState([])
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [editando, setEditando] = useState(null)
+  const [soloActivos, setSoloActivos] = useState(true)
   const [form, setForm] = useState({
     nombre: '',
     zona: '',
@@ -24,7 +25,7 @@ function Proveedores() {
   }, [])
 
   const cargarProveedores = async () => {
-    const res = await api.get('/proveedores')
+    const res = await api.get('/proveedores/todos')
     setProveedores(res.data)
   }
 
@@ -81,21 +82,37 @@ function Proveedores() {
     setForm({ nombre: '', zona: '', precioLitro: '', cuotaLitros: '', tipoLeche: 'vaca', ruta: null, aplica4x1000: true })
   }
 
-  const desactivar = async (id) => {
-    if (confirm('¿Desactivar este proveedor?')) {
-      await api.delete(`/proveedores/${id}`)
+  const toggleActivo = async (p) => {
+    const accion = p.activo ? 'inactivar' : 'activar'
+    if (confirm(`¿${accion.charAt(0).toUpperCase() + accion.slice(1)} a ${p.nombre}?`)) {
+      await api.patch(`/proveedores/${p.id}/toggle-activo`)
       cargarProveedores()
     }
   }
+
+  const lista = proveedores
+    .filter(p => !p.ruta || rutasSeleccionadas.has(p.ruta.id))
+    .filter(p => !soloActivos || p.activo)
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h2 style={{ margin: 0 }}>Proveedores</h2>
-        <button onClick={() => { cancelar(); setMostrarFormulario(!mostrarFormulario) }}
-          style={{ background: '#6c63ff', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer' }}>
-          {mostrarFormulario ? 'Cancelar' : '+ Nuevo proveedor'}
-        </button>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button
+            onClick={() => setSoloActivos(v => !v)}
+            style={{
+              background: soloActivos ? '#f5f5f5' : '#fff3e0',
+              color: soloActivos ? '#666' : '#e65100',
+              border: '1px solid #ddd', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px'
+            }}>
+            {soloActivos ? 'Ver todos' : 'Ver solo activos'}
+          </button>
+          <button onClick={() => { cancelar(); setMostrarFormulario(!mostrarFormulario) }}
+            style={{ background: '#6c63ff', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer' }}>
+            {mostrarFormulario ? 'Cancelar' : '+ Nuevo proveedor'}
+          </button>
+        </div>
       </div>
 
       {mostrarFormulario && (
@@ -183,50 +200,64 @@ function Proveedores() {
             </tr>
           </thead>
           <tbody>
-            {proveedores.filter(p => !p.ruta || rutasSeleccionadas.has(p.ruta.id)).map((p, i) => (
-              <tr key={p.id} style={{ borderTop: '1px solid #f0f0f0', background: editando === p.id ? '#f3f0ff' : i % 2 === 0 ? 'white' : '#fafafa' }}>
-                <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '500' }}>{p.nombre}</td>
-                <td style={{ padding: '12px 16px', fontSize: '14px', color: '#666' }}>{p.zona}</td>
-                <td style={{ padding: '12px 16px', fontSize: '14px' }}>
-                  <span style={{ background: '#ede7f6', color: '#4527a0', padding: '2px 10px', borderRadius: '12px', fontSize: '12px' }}>
-                    {p.ruta?.nombre || 'Sin ruta'}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '600', color: '#1b5e20' }}>
-                  ${p.precioLitro?.toLocaleString('es-CO')}
-                </td>
-                <td style={{ padding: '12px 16px', fontSize: '14px' }}>{p.cuotaLitros} L</td>
-                <td style={{ padding: '12px 16px', fontSize: '14px' }}>
-                  <span style={{
-                    background: p.tipoLeche === 'vaca' ? '#e8f5e9' : '#fff3e0',
-                    color: p.tipoLeche === 'vaca' ? '#2e7d32' : '#e65100',
-                    padding: '2px 10px', borderRadius: '12px', fontSize: '12px'
-                  }}>
-                    {p.tipoLeche}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 16px' }}>
-                  <span style={{
-                    background: p.aplica4x1000 !== false ? '#e8f5e9' : '#ffebee',
-                    color: p.aplica4x1000 !== false ? '#2e7d32' : '#c62828',
-                    padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '600'
-                  }}>
-                    {p.aplica4x1000 !== false ? 'Sí' : 'No'}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 16px', display: 'flex', gap: '8px' }}>
-                  <button onClick={() => iniciarEdicion(p)}
-                    style={{ background: '#e8f5e9', color: '#2e7d32', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                    Editar
-                  </button>
-                  <button onClick={() => desactivar(p.id)}
-                    style={{ background: '#ffebee', color: '#c62828', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                    Desactivar
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {proveedores.filter(p => !p.ruta || rutasSeleccionadas.has(p.ruta.id)).length === 0 && (
+            {lista.map((p, i) => {
+              const inactivo = !p.activo
+              return (
+                <tr key={p.id} style={{
+                  borderTop: '1px solid #f0f0f0',
+                  background: editando === p.id ? '#f3f0ff' : inactivo ? '#fafafa' : i % 2 === 0 ? 'white' : '#fafafa',
+                  opacity: inactivo ? 0.6 : 1
+                }}>
+                  <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '500', textDecoration: inactivo ? 'line-through' : 'none', color: inactivo ? '#999' : 'inherit' }}>
+                    {p.nombre}
+                    {inactivo && <span style={{ marginLeft: '8px', fontSize: '11px', background: '#eeeeee', color: '#757575', padding: '1px 8px', borderRadius: '10px' }}>inactivo</span>}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: '14px', color: '#666' }}>{p.zona}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '14px' }}>
+                    <span style={{ background: '#ede7f6', color: '#4527a0', padding: '2px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                      {p.ruta?.nombre || 'Sin ruta'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '600', color: '#1b5e20' }}>
+                    ${p.precioLitro?.toLocaleString('es-CO')}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: '14px' }}>{p.cuotaLitros} L</td>
+                  <td style={{ padding: '12px 16px', fontSize: '14px' }}>
+                    <span style={{
+                      background: p.tipoLeche === 'vaca' ? '#e8f5e9' : '#fff3e0',
+                      color: p.tipoLeche === 'vaca' ? '#2e7d32' : '#e65100',
+                      padding: '2px 10px', borderRadius: '12px', fontSize: '12px'
+                    }}>
+                      {p.tipoLeche}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{
+                      background: p.aplica4x1000 !== false ? '#e8f5e9' : '#ffebee',
+                      color: p.aplica4x1000 !== false ? '#2e7d32' : '#c62828',
+                      padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '600'
+                    }}>
+                      {p.aplica4x1000 !== false ? 'Sí' : 'No'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px 16px', display: 'flex', gap: '8px' }}>
+                    <button onClick={() => iniciarEdicion(p)}
+                      style={{ background: '#e8f5e9', color: '#2e7d32', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                      Editar
+                    </button>
+                    <button onClick={() => toggleActivo(p)}
+                      style={{
+                        background: inactivo ? '#e3f2fd' : '#ffebee',
+                        color: inactivo ? '#1565c0' : '#c62828',
+                        border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px'
+                      }}>
+                      {inactivo ? 'Activar' : 'Inactivar'}
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+            {lista.length === 0 && (
               <tr>
                 <td colSpan={8} style={{ padding: '32px', textAlign: 'center', color: '#999' }}>No hay proveedores registrados</td>
               </tr>

@@ -40,9 +40,8 @@ public class ProveedorController {
         return ResponseEntity.ok(proveedorService.actualizar(id, proveedor));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> desactivar(@PathVariable Long id) {
-        proveedorService.desactivar(id);
-        return ResponseEntity.noContent().build();
+    @PatchMapping("/{id}/toggle-activo")
+    public ResponseEntity<Proveedor> toggleActivo(@PathVariable Long id) {
+        return ResponseEntity.ok(proveedorService.toggleActivo(id));
     }
 }
