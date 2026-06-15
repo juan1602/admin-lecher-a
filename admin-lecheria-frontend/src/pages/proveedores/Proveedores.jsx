@@ -14,7 +14,8 @@ function Proveedores() {
     precioLitro: '',
     cuotaLitros: '',
     tipoLeche: 'vaca',
-    ruta: null
+    ruta: null,
+    aplica4x1000: true
   })
 
   useEffect(() => {
@@ -54,7 +55,7 @@ function Proveedores() {
     } else {
       await api.post('/proveedores', payload)
     }
-    setForm({ nombre: '', zona: '', precioLitro: '', cuotaLitros: '', tipoLeche: 'vaca', ruta: null })
+    setForm({ nombre: '', zona: '', precioLitro: '', cuotaLitros: '', tipoLeche: 'vaca', ruta: null, aplica4x1000: true })
     setMostrarFormulario(false)
     cargarProveedores()
   }
@@ -67,7 +68,8 @@ function Proveedores() {
       precioLitro: p.precioLitro ?? '',
       cuotaLitros: p.cuotaLitros ?? '',
       tipoLeche: p.tipoLeche ?? 'vaca',
-      ruta: p.ruta ? { id: p.ruta.id } : null
+      ruta: p.ruta ? { id: p.ruta.id } : null,
+      aplica4x1000: p.aplica4x1000 !== false
     })
     setMostrarFormulario(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -76,7 +78,7 @@ function Proveedores() {
   const cancelar = () => {
     setEditando(null)
     setMostrarFormulario(false)
-    setForm({ nombre: '', zona: '', precioLitro: '', cuotaLitros: '', tipoLeche: 'vaca', ruta: null })
+    setForm({ nombre: '', zona: '', precioLitro: '', cuotaLitros: '', tipoLeche: 'vaca', ruta: null, aplica4x1000: true })
   }
 
   const desactivar = async (id) => {
@@ -139,6 +141,18 @@ function Proveedores() {
                   <option value="bufala">Búfala</option>
                 </select>
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <label style={{ fontSize: '14px' }}>Aplica 4x1000</label>
+                <button type="button"
+                  onClick={() => setForm(f => ({ ...f, aplica4x1000: !f.aplica4x1000 }))}
+                  style={{
+                    background: form.aplica4x1000 ? '#e8f5e9' : '#ffebee',
+                    color: form.aplica4x1000 ? '#2e7d32' : '#c62828',
+                    border: 'none', padding: '6px 16px', borderRadius: '20px', cursor: 'pointer', fontWeight: '600', fontSize: '13px'
+                  }}>
+                  {form.aplica4x1000 ? 'Sí' : 'No'}
+                </button>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
               <button type="submit"
@@ -164,6 +178,7 @@ function Proveedores() {
               <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', color: '#666' }}>Precio/litro</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', color: '#666' }}>Cuota</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', color: '#666' }}>Tipo</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', color: '#666' }}>4x1000</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', color: '#666' }}>Acciones</th>
             </tr>
           </thead>
@@ -190,6 +205,15 @@ function Proveedores() {
                     {p.tipoLeche}
                   </span>
                 </td>
+                <td style={{ padding: '12px 16px' }}>
+                  <span style={{
+                    background: p.aplica4x1000 !== false ? '#e8f5e9' : '#ffebee',
+                    color: p.aplica4x1000 !== false ? '#2e7d32' : '#c62828',
+                    padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '600'
+                  }}>
+                    {p.aplica4x1000 !== false ? 'Sí' : 'No'}
+                  </span>
+                </td>
                 <td style={{ padding: '12px 16px', display: 'flex', gap: '8px' }}>
                   <button onClick={() => iniciarEdicion(p)}
                     style={{ background: '#e8f5e9', color: '#2e7d32', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
@@ -204,7 +228,7 @@ function Proveedores() {
             ))}
             {proveedores.filter(p => !p.ruta || rutasSeleccionadas.has(p.ruta.id)).length === 0 && (
               <tr>
-                <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#999' }}>No hay proveedores registrados</td>
+                <td colSpan={8} style={{ padding: '32px', textAlign: 'center', color: '#999' }}>No hay proveedores registrados</td>
               </tr>
             )}
           </tbody>

@@ -113,7 +113,9 @@ public class RecoleccionService {
         double totalLitros = ordenadas.stream().mapToDouble(Recoleccion::getLitrosRecolectados).sum();
         double precioLitro = prov.getPrecioLitro() != null ? prov.getPrecioLitro() : 0;
         double valorBruto = totalLitros * precioLitro;
-        double descuento4x1000 = Math.round(valorBruto * 4.0 / 1000.0 * 100.0) / 100.0;
+        double descuento4x1000 = (prov.getAplica4x1000())
+            ? Math.round(valorBruto * 4.0 / 1000.0 * 100.0) / 100.0
+            : 0.0;
 
         List<Descuento> descsProv = todosDescuentos.stream()
             .filter(d -> d.getProveedor().getId().equals(proveedorId))

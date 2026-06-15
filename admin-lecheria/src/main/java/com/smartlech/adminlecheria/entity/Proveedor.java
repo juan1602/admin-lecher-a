@@ -32,6 +32,9 @@ public class Proveedor {
     @Column(nullable = false)
     private Boolean activo = true;
 
+    @Column(name = "aplica_4x1000", nullable = false)
+    private Boolean aplica4x1000 = true;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -53,6 +56,9 @@ public class Proveedor {
     public Boolean getActivo() { return activo; }
     public void setActivo(Boolean activo) { this.activo = activo; }
 
+    public Boolean getAplica4x1000() { return aplica4x1000 != null ? aplica4x1000 : true; }
+    public void setAplica4x1000(Boolean aplica4x1000) { this.aplica4x1000 = aplica4x1000 != null ? aplica4x1000 : true; }
+
     public Ruta getRuta() { return ruta; }
-public void setRuta(Ruta ruta) { this.ruta = ruta; }
+    public void setRuta(Ruta ruta) { this.ruta = ruta; }
 }
