@@ -1,6 +1,7 @@
 package com.smartlech.adminlecheria.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "combustibles")
@@ -24,6 +25,9 @@ public class Combustible {
     @Column
     private String rutaContexto;
 
+    @Column
+    private LocalDate fecha;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -38,4 +42,7 @@ public class Combustible {
 
     public String getRutaContexto() { return rutaContexto; }
     public void setRutaContexto(String rutaContexto) { this.rutaContexto = rutaContexto; }
+
+    public LocalDate getFecha() { return fecha; }
+    public void setFecha(LocalDate fecha) { this.fecha = fecha; }
 }

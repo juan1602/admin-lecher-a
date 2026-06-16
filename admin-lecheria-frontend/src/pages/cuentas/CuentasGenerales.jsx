@@ -24,7 +24,7 @@ function CuentasGenerales() {
   const [formDesc, setFormDesc] = useState({ nombre: '', valor: '' })
   const [mostrarFormTrans, setMostrarFormTrans] = useState(false)
   const [mostrarFormRinde, setMostrarFormRinde] = useState(false)
-  const [formComb, setFormComb] = useState({ descripcion: '', valor: '' })
+  const [formComb, setFormComb] = useState({ descripcion: '', valor: '', fecha: '' })
   const [mostrarFormComb, setMostrarFormComb] = useState(false)
   const [editando, setEditando] = useState(null)
 
@@ -145,9 +145,10 @@ function CuentasGenerales() {
       quincena: { id: parseInt(quincenaId) },
       descripcion: desc,
       valor,
+      fecha: formComb.fecha || null,
       rutaContexto
     })
-    setFormComb({ descripcion: '', valor: '' })
+    setFormComb({ descripcion: '', valor: '', fecha: '' })
     setMostrarFormComb(false)
     recargarCombustibles()
   }
@@ -396,14 +397,18 @@ function CuentasGenerales() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
+                    <th style={{ padding: '12px 0 8px', textAlign: 'left', fontSize: '12px', color: '#888', fontWeight: '600' }}>Fecha</th>
                     <th style={{ padding: '12px 0 8px', textAlign: 'left', fontSize: '12px', color: '#888', fontWeight: '600' }}>Descripción</th>
                     <th style={{ padding: '12px 0 8px', textAlign: 'right', fontSize: '12px', color: '#888', fontWeight: '600' }}>Valor</th>
                     <th style={{ width: '40px' }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {combustibles.map((c, i) => (
+                  {[...combustibles].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).map((c, i) => {
+                    const fechaFmt = c.fecha ? c.fecha.split('-').slice(1).reverse().join('/') : '—'
+                    return (
                     <tr key={c.id} style={{ borderBottom: '1px solid #f8f8f8', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
+                      <td style={{ padding: '10px 0', fontSize: '13px', color: '#888', whiteSpace: 'nowrap' }}>{fechaFmt}</td>
                       <td style={{ padding: '10px 0', fontSize: '14px' }}>{c.descripcion}</td>
                       <td style={{ padding: '10px 0', textAlign: 'right', fontSize: '14px', fontWeight: '600', color: '#e65100' }}>${fmt(c.valor)}</td>
                       <td style={{ padding: '10px 0', textAlign: 'right' }}>
@@ -411,7 +416,8 @@ function CuentasGenerales() {
                           style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: '16px' }}>✕</button>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                   {combustibles.length === 0 && (
                     <tr>
                       <td colSpan={3} style={{ padding: '24px 0', textAlign: 'center', color: '#bbb', fontSize: '13px' }}>
@@ -423,11 +429,15 @@ function CuentasGenerales() {
               </table>
 
               {mostrarFormComb ? (
-                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+                  <input type="date"
+                    value={formComb.fecha}
+                    onChange={e => setFormComb({ ...formComb, fecha: e.target.value })}
+                    style={{ padding: '9px 12px', borderRadius: '7px', border: '1px solid #ddd', fontSize: '14px' }} />
                   <input placeholder="Descripción (ej: Gasolina carro Omar)"
                     value={formComb.descripcion}
                     onChange={e => setFormComb({ ...formComb, descripcion: e.target.value })}
-                    style={{ flex: 1, padding: '9px 12px', borderRadius: '7px', border: '1px solid #ddd', fontSize: '14px' }} />
+                    style={{ flex: 1, minWidth: '180px', padding: '9px 12px', borderRadius: '7px', border: '1px solid #ddd', fontSize: '14px' }} />
                   <input type="number" placeholder="Valor"
                     value={formComb.valor}
                     onChange={e => setFormComb({ ...formComb, valor: e.target.value })}
@@ -437,7 +447,7 @@ function CuentasGenerales() {
                     style={{ background: '#e65100', color: 'white', border: 'none', padding: '9px 18px', borderRadius: '7px', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
                     Guardar
                   </button>
-                  <button onClick={() => { setMostrarFormComb(false); setFormComb({ descripcion: '', valor: '' }) }}
+                  <button onClick={() => { setMostrarFormComb(false); setFormComb({ descripcion: '', valor: '', fecha: '' }) }}
                     style={{ background: '#f5f5f5', color: '#666', border: 'none', padding: '9px 14px', borderRadius: '7px', cursor: 'pointer', fontSize: '14px' }}>
                     Cancelar
                   </button>
