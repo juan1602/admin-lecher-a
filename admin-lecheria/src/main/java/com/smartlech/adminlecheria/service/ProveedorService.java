@@ -37,6 +37,7 @@ public class ProveedorService {
         proveedor.setCuotaLitros(datos.getCuotaLitros());
         proveedor.setTipoLeche(datos.getTipoLeche());
         proveedor.setAplica4x1000(datos.getAplica4x1000());
+        proveedor.setRuta(datos.getRuta());
         return proveedorRepository.save(proveedor);
     }
 

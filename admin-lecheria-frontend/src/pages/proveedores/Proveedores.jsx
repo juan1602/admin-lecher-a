@@ -132,7 +132,7 @@ function Proveedores() {
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px' }}>Ruta</label>
-                <select name="ruta" onChange={handleChange} required
+                <select name="ruta" value={form.ruta?.id ?? ''} onChange={handleChange} required
                   style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd', boxSizing: 'border-box' }}>
                   <option value="">Seleccionar ruta...</option>
                   {rutas.map(r => (
