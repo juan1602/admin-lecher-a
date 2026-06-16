@@ -75,7 +75,7 @@ function ReciboProveedorModal({ proveedor, textoQuincena, onClose }) {
           {/* Encabezado estilo Excel */}
           <div style={{ marginBottom: '20px', lineHeight: '1.9' }}>
             <div><span style={estiloLabel}>DEBE A:</span> <strong>{proveedor.nombre}</strong></div>
-            {proveedor.zona && <div><span style={estiloLabel}>ZONA:</span> {proveedor.zona}</div>}
+            {proveedor.rutaNombre && <div><span style={estiloLabel}>RUTA:</span> {proveedor.rutaNombre}</div>}
             <div><span style={estiloLabel}>POR CONCEPTO DE:</span> {textoQuincena}</div>
             {proveedor.conductores && (
               <div><span style={estiloLabel}>TRANSPORTADOR:</span> {proveedor.conductores}</div>

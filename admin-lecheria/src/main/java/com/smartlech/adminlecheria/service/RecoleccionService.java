@@ -14,10 +14,13 @@ import com.smartlech.adminlecheria.repository.RecoleccionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.text.Collator;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 @Service
@@ -132,10 +135,11 @@ public class RecoleccionService {
             .map(r -> new RecoleccionDiariaDTO(r.getFecha().toString(), r.getLitrosRecolectados(), r.getVale()))
             .collect(Collectors.toList());
 
-        String conductores = ordenadas.stream()
-            .map(r -> r.getConductor().getNombre())
-            .distinct()
-            .collect(Collectors.joining(" Y "));
+        Collator collator = Collator.getInstance(new Locale("es", "CO"));
+        collator.setStrength(Collator.PRIMARY);
+        TreeSet<String> conductoresSet = new TreeSet<>(collator);
+        ordenadas.forEach(r -> conductoresSet.add(r.getConductor().getNombre().trim()));
+        String conductores = String.join(" Y ", conductoresSet);
 
         ResumenProveedorDTO dto = new ResumenProveedorDTO();
         dto.setProveedorId(proveedorId);
