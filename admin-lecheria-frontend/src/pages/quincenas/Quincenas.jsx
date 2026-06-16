@@ -30,6 +30,17 @@ function Quincenas() {
     }
   }
 
+  const reabrir = async (id) => {
+    if (confirm('¿Reabrir esta quincena?')) {
+      try {
+        await api.put(`/quincenas/${id}/reabrir`)
+        cargarQuincenas()
+      } catch (e) {
+        alert(e.response?.data || 'No se pudo reabrir la quincena.')
+      }
+    }
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -95,11 +106,17 @@ function Quincenas() {
                     {q.cerrada ? 'Cerrada' : 'Abierta'}
                   </span>
                 </td>
-                <td style={{ padding: '12px 16px' }}>
+                <td style={{ padding: '12px 16px', display: 'flex', gap: '8px' }}>
                   {!q.cerrada && (
                     <button onClick={() => cerrar(q.id)}
                       style={{ background: '#fff3e0', color: '#e65100', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
                       Cerrar quincena
+                    </button>
+                  )}
+                  {q.cerrada && (
+                    <button onClick={() => reabrir(q.id)}
+                      style={{ background: '#e3f2fd', color: '#1565c0', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                      Reabrir
                     </button>
                   )}
                 </td>

@@ -39,4 +39,13 @@ public class QuincenaController {
     public ResponseEntity<Quincena> cerrar(@PathVariable Long id) {
         return ResponseEntity.ok(quincenaService.cerrar(id));
     }
+
+    @PutMapping("/{id}/reabrir")
+    public ResponseEntity<?> reabrir(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(quincenaService.reabrir(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

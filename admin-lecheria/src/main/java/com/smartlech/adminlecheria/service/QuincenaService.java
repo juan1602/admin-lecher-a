@@ -35,4 +35,13 @@ public class QuincenaService {
         quincena.setCerrada(true);
         return quincenaRepository.save(quincena);
     }
+
+    public Quincena reabrir(Long id) {
+        if (quincenaRepository.findByCerradaFalse().isPresent()) {
+            throw new RuntimeException("Ya hay una quincena abierta. Ciérrala antes de reabrir otra.");
+        }
+        Quincena quincena = buscarPorId(id);
+        quincena.setCerrada(false);
+        return quincenaRepository.save(quincena);
+    }
 }
