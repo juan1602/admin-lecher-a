@@ -137,8 +137,13 @@ public class RecoleccionService {
 
         Collator collator = Collator.getInstance(new Locale("es", "CO"));
         collator.setStrength(Collator.PRIMARY);
+        Long provRutaId = prov.getRuta() != null ? prov.getRuta().getId() : null;
         TreeSet<String> conductoresSet = new TreeSet<>(collator);
-        ordenadas.forEach(r -> conductoresSet.add(r.getConductor().getNombre().trim()));
+        ordenadas.forEach(r -> {
+            var c = r.getConductor();
+            boolean sirveRuta = provRutaId == null || c.getRutaIds().isEmpty() || c.getRutaIds().contains(provRutaId);
+            if (sirveRuta) conductoresSet.add(c.getNombre().trim());
+        });
         String conductores = String.join(" Y ", conductoresSet);
 
         ResumenProveedorDTO dto = new ResumenProveedorDTO();
