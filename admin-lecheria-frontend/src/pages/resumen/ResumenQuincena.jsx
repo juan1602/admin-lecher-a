@@ -18,6 +18,7 @@ function ResumenQuincena() {
   const [excedentes, setExcedentes] = useState({}) // { proveedorId: valorPorLitro }
   const [modalImpresion, setModalImpresion] = useState(false)
   const [seleccionImpresion, setSeleccionImpresion] = useState(new Set())
+  const [filtroLeche, setFiltroLeche] = useState('')
 
   useEffect(() => {
     api.get('/quincenas')
@@ -86,7 +87,10 @@ function ResumenQuincena() {
   }
 
   const provsFiltrados = resumen
-    ? resumen.proveedores.filter(p => !p.rutaId || rutasSeleccionadas.has(p.rutaId))
+    ? resumen.proveedores.filter(p =>
+        (!p.rutaId || rutasSeleccionadas.has(p.rutaId)) &&
+        (!filtroLeche || (p.tipoLeche || 'vaca') === filtroLeche)
+      )
     : []
 
   const abrirModalImpresion = () => {
@@ -249,8 +253,17 @@ function ResumenQuincena() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h2 style={{ margin: 0 }}>Resumen de Quincena</h2>
-        {resumen && (
-          <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {[['', 'Todos'], ['vaca', 'Vaca'], ['bufala', 'Búfala']].map(([val, label]) => (
+            <button key={val} onClick={() => setFiltroLeche(val)} style={{
+              padding: '6px 16px', borderRadius: '20px', border: '2px solid',
+              borderColor: filtroLeche === val ? '#0288d1' : '#e0e0e0',
+              background: filtroLeche === val ? '#0288d1' : 'white',
+              color: filtroLeche === val ? 'white' : '#666',
+              fontWeight: '600', fontSize: '13px', cursor: 'pointer'
+            }}>{label}</button>
+          ))}
+          {resumen && <>
             <button onClick={imprimirLista}
               style={{ background: '#f0f4ff', color: '#3949ab', border: '1px solid #c5cae9', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
               Imprimir lista
@@ -259,8 +272,8 @@ function ResumenQuincena() {
               style={{ background: '#1a1a2e', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
               Imprimir recibos
             </button>
-          </div>
-        )}
+          </>}
+        </div>
       </div>
 
       {/* Selector de quincena */}

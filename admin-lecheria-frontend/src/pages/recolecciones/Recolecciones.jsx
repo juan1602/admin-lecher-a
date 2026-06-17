@@ -12,6 +12,7 @@ function Recolecciones() {
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date().toISOString().split('T')[0])
   const [modal, setModal] = useState(null) // { proveedor, recoleccionId? }
   const [modalForm, setModalForm] = useState({ conductorId: '', litros: '', vale: '' })
+  const [filtroLeche, setFiltroLeche] = useState('')
 
   useEffect(() => { cargarDatos() }, [])
 
@@ -60,8 +61,11 @@ function Recolecciones() {
     setRecolecciones(res.data)
   }
 
-  // Proveedores activos según las rutas seleccionadas en el sidebar
-  const proveedoresFiltrados = proveedores.filter(p => p.ruta && rutasSeleccionadas.has(p.ruta.id))
+  // Proveedores activos según las rutas seleccionadas y tipo de leche
+  const proveedoresFiltrados = proveedores.filter(p =>
+    p.ruta && rutasSeleccionadas.has(p.ruta.id) &&
+    (!filtroLeche || (p.tipoLeche || 'vaca') === filtroLeche)
+  )
 
   // Recoleccion del proveedor en la fecha seleccionada
   const getRecoleccion = (proveedorId) =>
@@ -177,9 +181,22 @@ function Recolecciones() {
 
   return (
     <div>
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ margin: 0 }}>Recolecciones</h2>
-        <span style={{ fontSize: '13px', color: '#666' }}>Quincena: {quincenaAbierta.textoQuincena}</span>
+      <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h2 style={{ margin: 0 }}>Recolecciones</h2>
+          <span style={{ fontSize: '13px', color: '#666' }}>Quincena: {quincenaAbierta.textoQuincena}</span>
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {[['', 'Todos'], ['vaca', 'Vaca'], ['bufala', 'Búfala']].map(([val, label]) => (
+            <button key={val} onClick={() => setFiltroLeche(val)} style={{
+              padding: '6px 16px', borderRadius: '20px', border: '2px solid',
+              borderColor: filtroLeche === val ? '#6c63ff' : '#e0e0e0',
+              background: filtroLeche === val ? '#6c63ff' : 'white',
+              color: filtroLeche === val ? 'white' : '#666',
+              fontWeight: '600', fontSize: '13px', cursor: 'pointer'
+            }}>{label}</button>
+          ))}
+        </div>
       </div>
 
       {/* Navegador de días */}
