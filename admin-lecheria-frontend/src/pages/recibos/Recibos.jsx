@@ -20,6 +20,7 @@ function Recibos() {
   const [form, setForm]                     = useState(FORM_VACIO)
   const [error, setError]                   = useState(null)
   const [guardando, setGuardando]           = useState(false)
+  const [busqueda, setBusqueda]             = useState('')
 
   useEffect(() => { cargarDatos() }, [])
 
@@ -70,9 +71,15 @@ function Recibos() {
   })
   const todasEmpresas = Object.values(empresasMap).sort((a, b) => a.nombre.localeCompare(b.nombre))
   // Empresas asignadas a las rutas activas
-  const empresas = todasEmpresas.filter(e => e.rutaId && rutasSeleccionadas.has(e.rutaId))
+  const empresas = todasEmpresas.filter(e =>
+    e.rutaId && rutasSeleccionadas.has(e.rutaId) &&
+    (!busqueda || e.nombre.toLowerCase().includes(busqueda.toLowerCase()))
+  )
   // Empresas sin ruta asignada (siempre visibles para poder gestionarlas)
-  const empresasSinRuta = todasEmpresas.filter(e => !e.rutaId)
+  const empresasSinRuta = todasEmpresas.filter(e =>
+    !e.rutaId &&
+    (!busqueda || e.nombre.toLowerCase().includes(busqueda.toLowerCase()))
+  )
 
   // Recibos del día seleccionado
   const delDia = recibos.filter(r => r.fecha === fechaSeleccionada)
@@ -206,6 +213,16 @@ function Recibos() {
             + Nueva empresa
           </button>
         </div>
+      </div>
+
+      {/* Buscador */}
+      <div style={{ marginBottom: '16px' }}>
+        <input
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          placeholder="Buscar empresa..."
+          style={{ width: '100%', padding: '9px 14px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+        />
       </div>
 
       {/* Navegador de días */}
