@@ -21,6 +21,9 @@ function Descuentos() {
   const [busqueda, setBusqueda] = useState('')
   const [filtroLeche, setFiltroLeche] = useState('')
   const [filtroRuta, setFiltroRuta] = useState('')
+  const [formFiltroRuta, setFormFiltroRuta] = useState('')
+  const [formFiltroLeche, setFormFiltroLeche] = useState('')
+  const [formBusqueda, setFormBusqueda] = useState('')
 
   useEffect(() => { cargarDatos() }, [])
 
@@ -118,14 +121,58 @@ function Descuentos() {
       <div style={{ background: 'white', padding: '24px', borderRadius: '12px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
         <h3 style={{ margin: '0 0 16px', fontSize: '15px' }}>Registrar descuento</h3>
         <form onSubmit={handleSubmit}>
+          {/* Filtros del selector de proveedor */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '12px', color: '#888', fontWeight: '600', whiteSpace: 'nowrap' }}>Filtrar proveedor:</span>
+            <input
+              value={formBusqueda}
+              onChange={e => { setFormBusqueda(e.target.value); setForm(f => ({ ...f, proveedorId: '' })) }}
+              placeholder="Buscar nombre..."
+              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px', outline: 'none', width: '160px' }}
+            />
+            <select value={formFiltroRuta} onChange={e => { setFormFiltroRuta(e.target.value); setForm(f => ({ ...f, proveedorId: '' })) }}
+              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px', color: formFiltroRuta ? '#333' : '#999' }}>
+              <option value="">Todas las rutas</option>
+              {rutas.map(r => <option key={r.id} value={String(r.id)}>{r.nombre}</option>)}
+            </select>
+            {[['', 'Todos'], ['vaca', 'Vaca'], ['bufala', 'Búfala']].map(([val, label]) => (
+              <button key={val} type="button" onClick={() => { setFormFiltroLeche(val); setForm(f => ({ ...f, proveedorId: '' })) }} style={{
+                padding: '5px 14px', borderRadius: '20px', border: '2px solid',
+                borderColor: formFiltroLeche === val ? '#6c63ff' : '#e0e0e0',
+                background: formFiltroLeche === val ? '#6c63ff' : 'white',
+                color: formFiltroLeche === val ? 'white' : '#666',
+                fontWeight: '600', fontSize: '12px', cursor: 'pointer'
+              }}>{label}</button>
+            ))}
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 2fr 1fr auto', gap: '12px', alignItems: 'flex-end' }}>
             <div>
-              <label style={lbl}>Proveedor</label>
+              <label style={lbl}>
+                Proveedor
+                {(() => {
+                  const n = proveedores.filter(p =>
+                    p.activo !== false &&
+                    (!formFiltroRuta || String(p.ruta?.id) === formFiltroRuta) &&
+                    (!formFiltroLeche || (p.tipoLeche || 'vaca') === formFiltroLeche) &&
+                    (!formBusqueda || p.nombre.toLowerCase().includes(formBusqueda.toLowerCase()))
+                  ).length
+                  return <span style={{ color: '#aaa', fontWeight: '400', marginLeft: '6px' }}>({n})</span>
+                })()}
+              </label>
               <select name="proveedorId" value={form.proveedorId} onChange={handleChange} required style={inp}>
                 <option value="">Seleccionar...</option>
-                {proveedores.map(p => (
-                  <option key={p.id} value={p.id}>{p.nombre}</option>
-                ))}
+                {proveedores
+                  .filter(p =>
+                    p.activo !== false &&
+                    (!formFiltroRuta || String(p.ruta?.id) === formFiltroRuta) &&
+                    (!formFiltroLeche || (p.tipoLeche || 'vaca') === formFiltroLeche) &&
+                    (!formBusqueda || p.nombre.toLowerCase().includes(formBusqueda.toLowerCase()))
+                  )
+                  .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                  .map(p => (
+                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                  ))}
               </select>
             </div>
             <div>
