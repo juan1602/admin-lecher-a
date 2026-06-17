@@ -56,6 +56,7 @@ export default function Inicio() {
   const calcularStats = (recs, provs, rutasSel, q) => {
     const recsFilt = recs.filter(r => rutasSel.has(r.proveedor?.ruta?.id))
     const provsFilt = provs.filter(p => rutasSel.has(p.ruta?.id))
+    const provPrecioMap = Object.fromEntries(provs.map(p => [p.id, p.precioLitro ?? 0]))
 
     const hoy = recsFilt.filter(r => r.fecha === HOY)
     const totalLitros = recsFilt.reduce((s, r) => s + (r.litrosRecolectados ?? 0), 0)
@@ -83,7 +84,7 @@ export default function Inicio() {
       recolsHoy:      hoy.length,
       litrosQuincena: totalLitros,
       diasConDatos:   [...new Set(recsFilt.map(r => r.fecha))].length,
-      estimadoPago:   totalLitros * 1900,
+      estimadoPago:   recsFilt.reduce((s, r) => s + (r.litrosRecolectados ?? 0) * (provPrecioMap[r.proveedor?.id] ?? 0), 0),
     })
   }
 
@@ -211,7 +212,7 @@ export default function Inicio() {
           <KpiCard
             label="Estimado a pagar"
             valor={`$${fmt(stats.estimadoPago)}`}
-            sub="a proveedores (ref. $1.900/L)"
+            sub="valor bruto sin descuentos"
             icon="💰" color="#388e3c"
           />
           <KpiCard
