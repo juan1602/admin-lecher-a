@@ -62,7 +62,13 @@ export default function CuentasPersonalizadas() {
         api.get(`/cuentas-personalizadas/${cuentaId}/ingresos?quincenaId=${qId}`),
         api.get(`/cuentas-personalizadas/${cuentaId}/descuentos?quincenaId=${qId}`),
       ])
-      setIngresosNombres(new Set(ri.data.map(i => i.nombreRecibo)))
+      let ingresos = ri.data
+      // Si la quincena no tiene ingresos aún, heredar de la quincena anterior
+      if (ingresos.length === 0) {
+        const heredados = await api.post(`/cuentas-personalizadas/${cuentaId}/ingresos/heredar?quincenaId=${qId}`)
+        ingresos = heredados.data
+      }
+      setIngresosNombres(new Set(ingresos.map(i => i.nombreRecibo)))
       setDescuentos(rd.data)
     } catch (e) { console.error(e) }
   }

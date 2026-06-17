@@ -52,6 +52,13 @@ public class CuentaPersonalizadaController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/{id}/ingresos/heredar")
+    public ResponseEntity<List<IngresoCuenta>> heredarIngresos(
+            @PathVariable Long id,
+            @RequestParam Long quincenaId) {
+        return ResponseEntity.ok(service.heredarIngresos(id, quincenaId));
+    }
+
     @DeleteMapping("/{id}/ingresos")
     public ResponseEntity<Void> quitarIngreso(
             @PathVariable Long id,
