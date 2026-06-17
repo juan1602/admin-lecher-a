@@ -22,6 +22,8 @@ function ReciboProveedorModal({ proveedor, textoQuincena, onClose }) {
             .total-final { font-weight: 700; font-size: 15px; border-top: 2px solid #000 !important; }
             .descuento { color: #c00; }
             h3 { margin: 0 0 16px; font-size: 16px; text-align: center; }
+            thead tr { background: white !important; color: black !important; }
+            thead th { color: black !important; background: white !important; font-weight: 700; border-bottom: 2px solid #000; border-top: 2px solid #000; }
           </style>
         </head>
         <body>${contenido.innerHTML}</body>
