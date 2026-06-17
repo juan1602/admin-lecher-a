@@ -9,6 +9,8 @@ function Proveedores() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [editando, setEditando] = useState(null)
   const [soloActivos, setSoloActivos] = useState(true)
+  const [filtroLeche, setFiltroLeche] = useState('')
+  const [busqueda, setBusqueda] = useState('')
   const [form, setForm] = useState({
     nombre: '',
     zona: '',
@@ -93,6 +95,8 @@ function Proveedores() {
   const lista = proveedores
     .filter(p => !p.ruta || rutasSeleccionadas.has(p.ruta.id))
     .filter(p => !soloActivos || p.activo)
+    .filter(p => !filtroLeche || (p.tipoLeche || 'vaca') === filtroLeche)
+    .filter(p => !busqueda || p.nombre.toLowerCase().includes(busqueda.toLowerCase()))
 
   return (
     <div>
@@ -113,6 +117,25 @@ function Proveedores() {
             {mostrarFormulario ? 'Cancelar' : '+ Nuevo proveedor'}
           </button>
         </div>
+      </div>
+
+      {/* Barra de búsqueda y filtros */}
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '20px' }}>
+        <input
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre..."
+          style={{ flex: 1, minWidth: '200px', padding: '8px 14px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', outline: 'none' }}
+        />
+        {[['', 'Todos'], ['vaca', 'Vaca'], ['bufala', 'Búfala']].map(([val, label]) => (
+          <button key={val} onClick={() => setFiltroLeche(val)} style={{
+            padding: '7px 18px', borderRadius: '20px', border: '2px solid',
+            borderColor: filtroLeche === val ? '#6c63ff' : '#e0e0e0',
+            background: filtroLeche === val ? '#6c63ff' : 'white',
+            color: filtroLeche === val ? 'white' : '#666',
+            fontWeight: '600', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap'
+          }}>{label}</button>
+        ))}
       </div>
 
       {mostrarFormulario && (
