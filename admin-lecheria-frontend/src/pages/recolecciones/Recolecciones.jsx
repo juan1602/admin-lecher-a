@@ -13,6 +13,7 @@ function Recolecciones() {
   const [modal, setModal] = useState(null) // { proveedor, recoleccionId? }
   const [modalForm, setModalForm] = useState({ conductorId: '', litros: '', vale: '' })
   const [filtroLeche, setFiltroLeche] = useState('')
+  const [busqueda, setBusqueda] = useState('')
 
   useEffect(() => { cargarDatos() }, [])
 
@@ -61,10 +62,11 @@ function Recolecciones() {
     setRecolecciones(res.data)
   }
 
-  // Proveedores activos según las rutas seleccionadas y tipo de leche
+  // Proveedores activos según las rutas seleccionadas, tipo de leche y búsqueda
   const proveedoresFiltrados = proveedores.filter(p =>
     p.ruta && rutasSeleccionadas.has(p.ruta.id) &&
-    (!filtroLeche || (p.tipoLeche || 'vaca') === filtroLeche)
+    (!filtroLeche || (p.tipoLeche || 'vaca') === filtroLeche) &&
+    (!busqueda || p.nombre.toLowerCase().includes(busqueda.toLowerCase()))
   )
 
   // Recoleccion del proveedor en la fecha seleccionada
@@ -186,7 +188,13 @@ function Recolecciones() {
           <h2 style={{ margin: 0 }}>Recolecciones</h2>
           <span style={{ fontSize: '13px', color: '#666' }}>Quincena: {quincenaAbierta.textoQuincena}</span>
         </div>
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar proveedor..."
+            style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px', outline: 'none', minWidth: '180px' }}
+          />
           {[['', 'Todos'], ['vaca', 'Vaca'], ['bufala', 'Búfala']].map(([val, label]) => (
             <button key={val} onClick={() => setFiltroLeche(val)} style={{
               padding: '6px 16px', borderRadius: '20px', border: '2px solid',
