@@ -16,6 +16,8 @@ function ResumenQuincena() {
   const [error, setError] = useState(null)
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null)
   const [excedentes, setExcedentes] = useState({}) // { proveedorId: valorPorLitro }
+  const [modalImpresion, setModalImpresion] = useState(false)
+  const [seleccionImpresion, setSeleccionImpresion] = useState(new Set())
 
   useEffect(() => {
     api.get('/quincenas')
@@ -83,10 +85,136 @@ function ResumenQuincena() {
     }
   }
 
+  const provsFiltrados = resumen
+    ? resumen.proveedores.filter(p => !p.rutaId || rutasSeleccionadas.has(p.rutaId))
+    : []
+
+  const abrirModalImpresion = () => {
+    setSeleccionImpresion(new Set(provsFiltrados.map(p => p.proveedorId)))
+    setModalImpresion(true)
+  }
+
+  const toggleSeleccion = (id) => {
+    setSeleccionImpresion(prev => {
+      const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s
+    })
+  }
+
+  const imprimirLista = () => {
+    const ventana = window.open('', '_blank', 'width=800,height=600')
+    ventana.document.write(`<html><head><title>Lista de pagos</title><style>
+      body{font-family:Arial,sans-serif;font-size:12px;margin:20px;color:#000}
+      h3{text-align:center;margin:0 0 14px;font-size:15px}
+      table{width:100%;border-collapse:collapse}
+      th{background:#f0f0f0;padding:7px 10px;border:1px solid #ccc;font-size:11px;font-weight:700}
+      td{padding:8px 10px;border:1px solid #ddd}
+      .r{text-align:right}.c{text-align:center}
+      tfoot td{background:#1a1a2e;color:white;font-weight:700}
+    </style></head><body>
+      <h3>LISTA DE PAGOS — ${quincenaTexto?.toUpperCase()}</h3>
+      <table>
+        <thead><tr>
+          <th class="c">#</th>
+          <th>PROVEEDOR</th>
+          <th class="r">LITROS</th>
+          <th class="r">VALOR A PAGAR</th>
+          <th class="c" style="width:55px">PAGADO</th>
+        </tr></thead>
+        <tbody>${provsFiltrados.map((p, i) => `
+          <tr>
+            <td class="c">${i + 1}</td>
+            <td>${p.nombre}</td>
+            <td class="r">${fmtL(p.totalLitros)}</td>
+            <td class="r"><strong>$${fmt(p.valorNeto)}</strong></td>
+            <td class="c" style="font-size:18px">□</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td colspan="2" class="c">TOTAL</td>
+          <td class="r">${fmtL(provsFiltrados.reduce((s, p) => s + p.totalLitros, 0))}</td>
+          <td class="r">$${fmt(provsFiltrados.reduce((s, p) => s + p.valorNeto, 0))}</td>
+          <td></td>
+        </tr></tfoot>
+      </table>
+    </body></html>`)
+    ventana.document.close()
+    ventana.focus()
+    setTimeout(() => { ventana.print(); ventana.close() }, 350)
+  }
+
+  const imprimirSeleccionados = () => {
+    const selec = provsFiltrados.filter(p => seleccionImpresion.has(p.proveedorId))
+    if (!selec.length) return
+    const fmtF = (f) => { const [,m,d] = (f||'').split('-'); return `${d}/${m}` }
+    const css = `
+      body{font-family:Arial,sans-serif;font-size:13px;margin:30px;color:#000}
+      table{width:100%;border-collapse:collapse;margin-bottom:20px}
+      th,td{border:1px solid #ccc;padding:5px 8px}
+      thead tr{background:white!important;color:black!important}
+      thead th{color:black!important;background:white!important;font-weight:700;border-bottom:2px solid #000;border-top:2px solid #000}
+      .recibo{page-break-after:always;padding-bottom:20px}
+      .recibo:last-child{page-break-after:avoid}
+      h3{margin:0 0 16px;font-size:16px;text-align:center}
+      .lbl{font-weight:600;display:inline-block;min-width:170px;color:#555}
+      .cl{padding:7px 12px 7px 0;font-size:13px;color:#444;width:60%}
+      .cv{padding:7px 12px;font-size:13px;text-align:right}
+      .rojo{color:#c00}
+      .verde{font-weight:700;font-size:15px;color:#1b5e20;border-top:2px solid #000}
+    `
+    const html = selec.map(p => {
+      const totDesc = p.descuento4x1000 + p.totalOtrosDescuentos
+      return `<div class="recibo">
+        <h3>RECIBO DE PAGO DE LECHE</h3>
+        <div style="margin-bottom:20px;line-height:1.9">
+          <div><span class="lbl">DEBE A:</span> <strong>${p.nombre}</strong></div>
+          ${p.rutaNombre ? `<div><span class="lbl">RUTA:</span> ${p.rutaNombre}</div>` : ''}
+          <div><span class="lbl">POR CONCEPTO DE:</span> ${quincenaTexto}</div>
+          ${p.conductores ? `<div><span class="lbl">TRANSPORTADOR:</span> ${p.conductores}</div>` : ''}
+        </div>
+        <table>
+          <thead><tr><th>FECHA</th><th>VALE</th><th style="text-align:right">LITROS</th></tr></thead>
+          <tbody>${p.recolecciones.map(r => `
+            <tr><td>${fmtF(r.fecha)}</td><td>${r.vale||''}</td><td style="text-align:right">${fmtL(r.litros)}</td></tr>
+          `).join('')}</tbody>
+          <tfoot><tr style="background:#f0f0f0;font-weight:700">
+            <td colspan="2">TOTAL LITROS</td><td style="text-align:right">${fmtL(p.totalLitros)}</td>
+          </tr></tfoot>
+        </table>
+        <table><tbody>
+          <tr><td class="cl">PRECIO ($/LITRO):</td><td class="cv">$${fmt(p.precioLitro)}</td></tr>
+          <tr><td class="cl">TOTAL LITROS:</td><td class="cv">${fmtL(p.totalLitros)}</td></tr>
+          <tr><td class="cl">VALOR TOTAL:</td><td class="cv"><strong>$${fmt(p.valorBruto)}</strong></td></tr>
+          <tr class="rojo"><td class="cl">DESCUENTO 4X1000:</td><td class="cv">- $${fmt(p.descuento4x1000)}</td></tr>
+          ${(p.otrosDescuentos||[]).map(d => `<tr class="rojo"><td class="cl" style="padding-left:24px">↳ ${d.concepto}:</td><td class="cv">- $${fmt(d.valor)}</td></tr>`).join('')}
+          ${totDesc > 0 ? `<tr class="rojo"><td class="cl">TOTAL DESCUENTOS:</td><td class="cv">- $${fmt(totDesc)}</td></tr>` : ''}
+          <tr class="verde"><td class="cl" style="font-weight:700">VALOR A PAGAR:</td><td class="cv" style="font-size:16px">$${fmt(p.valorNeto)}</td></tr>
+        </tbody></table>
+      </div>`
+    }).join('')
+    const ventana = window.open('', '_blank', 'width=750,height=900')
+    ventana.document.write(`<html><head><title>Recibos — ${quincenaTexto}</title><style>${css}</style></head><body>${html}</body></html>`)
+    ventana.document.close()
+    ventana.focus()
+    setTimeout(() => { ventana.print(); ventana.close() }, 400)
+    setModalImpresion(false)
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h2 style={{ margin: 0 }}>Resumen de Quincena</h2>
+        {resumen && (
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={imprimirLista}
+              style={{ background: '#f0f4ff', color: '#3949ab', border: '1px solid #c5cae9', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
+              Imprimir lista
+            </button>
+            <button onClick={abrirModalImpresion}
+              style={{ background: '#1a1a2e', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
+              Imprimir recibos
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Selector de quincena */}
@@ -114,7 +242,6 @@ function ResumenQuincena() {
       )}
 
       {resumen && !cargando && (() => {
-        const provsFiltrados = resumen.proveedores.filter(p => !p.rutaId || rutasSeleccionadas.has(p.rutaId))
         const totL      = provsFiltrados.reduce((s, p) => s + p.totalLitros, 0)
         const totBruto  = provsFiltrados.reduce((s, p) => s + p.valorBruto, 0)
         const totDesc   = provsFiltrados.reduce((s, p) => s + p.descuento4x1000 + p.totalOtrosDescuentos, 0)
@@ -288,6 +415,66 @@ function ResumenQuincena() {
           textoQuincena={quincenaTexto}
           onClose={() => setProveedorSeleccionado(null)}
         />
+      )}
+
+      {/* Modal: imprimir recibos en lote */}
+      {modalImpresion && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+          onClick={() => setModalImpresion(false)}>
+          <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '460px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ background: '#1a1a2e', color: 'white', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: '700', fontSize: '15px' }}>Seleccionar recibos a imprimir</span>
+              <button onClick={() => setModalImpresion(false)} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '20px', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ padding: '12px 20px', borderBottom: '1px solid #f0f0f0', display: 'flex', gap: '10px' }}>
+              <button onClick={() => setSeleccionImpresion(new Set(provsFiltrados.map(p => p.proveedorId)))}
+                style={{ fontSize: '12px', background: '#f0f4ff', color: '#3949ab', border: '1px solid #c5cae9', borderRadius: '6px', padding: '5px 12px', cursor: 'pointer', fontWeight: '600' }}>
+                Todos
+              </button>
+              <button onClick={() => setSeleccionImpresion(new Set())}
+                style={{ fontSize: '12px', background: '#fafafa', color: '#888', border: '1px solid #e0e0e0', borderRadius: '6px', padding: '5px 12px', cursor: 'pointer', fontWeight: '600' }}>
+                Ninguno
+              </button>
+              <span style={{ marginLeft: 'auto', fontSize: '13px', color: '#888', alignSelf: 'center' }}>
+                {seleccionImpresion.size} seleccionados
+              </span>
+            </div>
+            <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
+              {provsFiltrados.map(p => {
+                const sel = seleccionImpresion.has(p.proveedorId)
+                return (
+                  <div key={p.proveedorId} onClick={() => toggleSeleccion(p.proveedorId)} style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '11px 20px', cursor: 'pointer', borderBottom: '1px solid #f5f5f5',
+                    background: sel ? '#f0fff4' : 'white',
+                  }}>
+                    <div style={{
+                      width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0,
+                      border: `2px solid ${sel ? '#27ae60' : '#ddd'}`,
+                      background: sel ? '#27ae60' : 'white',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {sel && <span style={{ color: 'white', fontSize: '11px', fontWeight: '700' }}>✓</span>}
+                    </div>
+                    <span style={{ flex: 1, fontSize: '13px', fontWeight: '500', color: '#333' }}>{p.nombre}</span>
+                    <span style={{ fontSize: '12px', color: '#888' }}>${fmt(p.valorNeto)}</span>
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ padding: '14px 20px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button onClick={() => setModalImpresion(false)}
+                style={{ background: '#f5f5f5', color: '#555', border: 'none', borderRadius: '8px', padding: '10px 18px', cursor: 'pointer', fontWeight: '600' }}>
+                Cancelar
+              </button>
+              <button onClick={imprimirSeleccionados} disabled={seleccionImpresion.size === 0}
+                style={{ background: seleccionImpresion.size > 0 ? '#1a1a2e' : '#ccc', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 20px', cursor: seleccionImpresion.size > 0 ? 'pointer' : 'default', fontWeight: '700', fontSize: '13px' }}>
+                Imprimir {seleccionImpresion.size > 0 ? `(${seleccionImpresion.size})` : ''}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
