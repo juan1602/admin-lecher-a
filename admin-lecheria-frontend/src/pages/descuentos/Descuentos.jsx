@@ -14,20 +14,26 @@ const FORM_VACIO = { proveedorId: '', concepto: '', valor: '', fecha: new Date()
 function Descuentos() {
   const [quincenaAbierta, setQuincenaAbierta] = useState(null)
   const [proveedores, setProveedores] = useState([])
+  const [rutas, setRutas] = useState([])
   const [descuentos, setDescuentos] = useState([])
   const [form, setForm] = useState(FORM_VACIO)
   const [guardando, setGuardando] = useState(false)
+  const [busqueda, setBusqueda] = useState('')
+  const [filtroLeche, setFiltroLeche] = useState('')
+  const [filtroRuta, setFiltroRuta] = useState('')
 
   useEffect(() => { cargarDatos() }, [])
 
   const cargarDatos = async () => {
     try {
-      const [quincenaRes, provRes] = await Promise.all([
+      const [quincenaRes, provRes, rutasRes] = await Promise.all([
         api.get('/quincenas/abierta'),
-        api.get('/proveedores')
+        api.get('/proveedores'),
+        api.get('/rutas')
       ])
       setQuincenaAbierta(quincenaRes.data)
       setProveedores(provRes.data)
+      setRutas(rutasRes.data)
       cargarDescuentos(quincenaRes.data.id)
     } catch {
       // sin quincena abierta
@@ -69,15 +75,28 @@ function Descuentos() {
     }
   }
 
-  // Agrupar descuentos por proveedor
-  const porProveedor = descuentos.reduce((acc, d) => {
+  // Mapa id → proveedor completo para acceder a ruta y tipoLeche
+  const provMap = Object.fromEntries(proveedores.map(p => [p.id, p]))
+
+  // Descuentos filtrados
+  const descuentosFiltrados = descuentos.filter(d => {
+    const prov = provMap[d.proveedor?.id]
+    const nombre = d.proveedor?.nombre ?? ''
+    if (busqueda && !nombre.toLowerCase().includes(busqueda.toLowerCase())) return false
+    if (filtroLeche && (prov?.tipoLeche || 'vaca') !== filtroLeche) return false
+    if (filtroRuta && String(prov?.ruta?.id ?? '') !== filtroRuta) return false
+    return true
+  })
+
+  // Agrupar descuentos filtrados por proveedor
+  const porProveedor = descuentosFiltrados.reduce((acc, d) => {
     const nombre = d.proveedor?.nombre ?? 'Sin nombre'
     if (!acc[nombre]) acc[nombre] = []
     acc[nombre].push(d)
     return acc
   }, {})
 
-  const totalDescuentos = descuentos.reduce((s, d) => s + (d.valor ?? 0), 0)
+  const totalDescuentos = descuentosFiltrados.reduce((s, d) => s + (d.valor ?? 0), 0)
 
   if (!quincenaAbierta) {
     return (
@@ -138,11 +157,35 @@ function Descuentos() {
         </form>
       </div>
 
+      {/* Filtros */}
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px' }}>
+        <input
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre..."
+          style={{ flex: 1, minWidth: '180px', padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', outline: 'none' }}
+        />
+        <select value={filtroRuta} onChange={e => setFiltroRuta(e.target.value)}
+          style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', color: filtroRuta ? '#333' : '#999' }}>
+          <option value="">Todas las rutas</option>
+          {rutas.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+        </select>
+        {[['', 'Todos'], ['vaca', 'Vaca'], ['bufala', 'Búfala']].map(([val, label]) => (
+          <button key={val} onClick={() => setFiltroLeche(val)} style={{
+            padding: '7px 16px', borderRadius: '20px', border: '2px solid',
+            borderColor: filtroLeche === val ? '#6c63ff' : '#e0e0e0',
+            background: filtroLeche === val ? '#6c63ff' : 'white',
+            color: filtroLeche === val ? 'white' : '#666',
+            fontWeight: '600', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap'
+          }}>{label}</button>
+        ))}
+      </div>
+
       {/* Resumen total */}
-      {descuentos.length > 0 && (
+      {descuentosFiltrados.length > 0 && (
         <div style={{ background: '#fff3e0', border: '1px solid #ffe0b2', borderRadius: '10px', padding: '14px 20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '14px', color: '#e65100', fontWeight: '500' }}>
-            Total descuentos de la quincena: <strong>{descuentos.length} registros</strong>
+            Total descuentos{busqueda || filtroLeche || filtroRuta ? ' (filtrados)' : ' de la quincena'}: <strong>{descuentosFiltrados.length} registros</strong>
           </span>
           <span style={{ fontSize: '20px', fontWeight: '700', color: '#c62828' }}>
             -${fmt(totalDescuentos)}
