@@ -101,41 +101,87 @@ function ResumenQuincena() {
   }
 
   const imprimirLista = () => {
-    const ventana = window.open('', '_blank', 'width=800,height=600')
+    const totL     = provsFiltrados.reduce((s, p) => s + p.totalLitros, 0)
+    const totBruto = provsFiltrados.reduce((s, p) => s + p.valorBruto, 0)
+    const totDesc  = provsFiltrados.reduce((s, p) => s + p.descuento4x1000 + p.totalOtrosDescuentos, 0)
+    const totNeto  = provsFiltrados.reduce((s, p) => s + p.valorNeto, 0)
+
+    const conExcedentes = provsFiltrados.filter(p => (excedentes[p.proveedorId] || 0) > 0)
+    const totExced = conExcedentes.reduce((s, p) => s + p.totalLitros * excedentes[p.proveedorId], 0)
+
+    const ventana = window.open('', '_blank', 'width=900,height=700')
     ventana.document.write(`<html><head><title>Lista de pagos</title><style>
       body{font-family:Arial,sans-serif;font-size:12px;margin:20px;color:#000}
-      h3{text-align:center;margin:0 0 14px;font-size:15px}
-      table{width:100%;border-collapse:collapse}
-      th{background:#f0f0f0;padding:7px 10px;border:1px solid #ccc;font-size:11px;font-weight:700}
-      td{padding:8px 10px;border:1px solid #ddd}
+      h3{text-align:center;margin:0 0 12px;font-size:15px;font-weight:700}
+      h4{margin:20px 0 8px;font-size:13px;font-weight:700;background:#4a1a2e;color:white;padding:6px 10px;border-radius:4px}
+      table{width:100%;border-collapse:collapse;margin-bottom:4px}
+      th{background:#f0f0f0;padding:6px 10px;border:1px solid #ccc;font-size:11px;font-weight:700;text-align:left}
+      td{padding:7px 10px;border:1px solid #ddd;font-size:12px}
       .r{text-align:right}.c{text-align:center}
-      tfoot td{background:#1a1a2e;color:white;font-weight:700}
+      .rojo{color:#c00}
+      .tfoot-main td{background:#1a1a2e;color:white;font-weight:700}
+      .tfoot-exc td{background:#4a1a2e;color:white;font-weight:700}
     </style></head><body>
-      <h3>LISTA DE PAGOS — ${quincenaTexto?.toUpperCase()}</h3>
+      <h3>PAGO DE PROVEEDORES — ${quincenaTexto?.toUpperCase()}</h3>
       <table>
         <thead><tr>
-          <th class="c">#</th>
+          <th class="c" style="width:28px">#</th>
           <th>PROVEEDOR</th>
+          <th>ZONA</th>
           <th class="r">LITROS</th>
-          <th class="r">VALOR A PAGAR</th>
-          <th class="c" style="width:55px">PAGADO</th>
+          <th class="r">$/LITRO</th>
+          <th class="r">VALOR BRUTO</th>
+          <th class="r">DESCUENTOS</th>
+          <th class="r">TOTAL A PAGAR</th>
         </tr></thead>
-        <tbody>${provsFiltrados.map((p, i) => `
-          <tr>
-            <td class="c">${i + 1}</td>
-            <td>${p.nombre}</td>
+        <tbody>${provsFiltrados.map((p, i) => {
+          const desc = p.descuento4x1000 + p.totalOtrosDescuentos
+          return `<tr style="background:${i % 2 === 0 ? 'white' : '#fafafa'}">
+            <td class="c" style="color:#bbb;font-size:11px">${i + 1}</td>
+            <td><strong>${p.nombre}</strong>${p.tipoLeche === 'búfala' ? ' <span style="font-size:10px;background:#e3f2fd;color:#1565c0;padding:1px 5px;border-radius:3px">Búfala</span>' : ''}</td>
+            <td style="color:#666">${p.zona || '—'}</td>
             <td class="r">${fmtL(p.totalLitros)}</td>
+            <td class="r" style="color:#666">$${fmt(p.precioLitro)}</td>
+            <td class="r">$${fmt(p.valorBruto)}</td>
+            <td class="r rojo">${desc > 0 ? `-$${fmt(desc)}` : '—'}</td>
             <td class="r"><strong>$${fmt(p.valorNeto)}</strong></td>
-            <td class="c" style="font-size:18px">□</td>
-          </tr>`).join('')}
+          </tr>`
+        }).join('')}
         </tbody>
-        <tfoot><tr>
-          <td colspan="2" class="c">TOTAL</td>
-          <td class="r">${fmtL(provsFiltrados.reduce((s, p) => s + p.totalLitros, 0))}</td>
-          <td class="r">$${fmt(provsFiltrados.reduce((s, p) => s + p.valorNeto, 0))}</td>
+        <tfoot><tr class="tfoot-main">
+          <td colspan="3">TOTAL A PAGAR</td>
+          <td class="r">${fmtL(totL)}</td>
           <td></td>
+          <td class="r">$${fmt(totBruto)}</td>
+          <td class="r">-$${fmt(totDesc)}</td>
+          <td class="r" style="font-size:14px">$${fmt(totNeto)}</td>
         </tr></tfoot>
       </table>
+
+      ${conExcedentes.length > 0 ? `
+      <h4>EXCEDENTES PAGADOS</h4>
+      <table>
+        <thead><tr>
+          <th>PROVEEDOR</th>
+          <th class="r">LITROS</th>
+          <th class="r">EXCEDENTE $/LITRO</th>
+          <th class="r">TOTAL EXCEDENTE</th>
+        </tr></thead>
+        <tbody>${conExcedentes.map((p, i) => {
+          const excVal = excedentes[p.proveedorId]
+          return `<tr style="background:${i % 2 === 0 ? 'white' : '#fafafa'}">
+            <td>${p.nombre}</td>
+            <td class="r" style="color:#666">${fmtL(p.totalLitros)}</td>
+            <td class="r">$${fmt(excVal)}</td>
+            <td class="r rojo"><strong>-$${fmt(p.totalLitros * excVal)}</strong></td>
+          </tr>`
+        }).join('')}
+        </tbody>
+        <tfoot><tr class="tfoot-exc">
+          <td colspan="3">TOTAL EXCEDENTES</td>
+          <td class="r">-$${fmt(totExced)}</td>
+        </tr></tfoot>
+      </table>` : ''}
     </body></html>`)
     ventana.document.close()
     ventana.focus()
