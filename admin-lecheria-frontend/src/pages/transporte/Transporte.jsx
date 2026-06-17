@@ -78,7 +78,14 @@ export default function Transporte() {
   // ── CRUD grupos ──────────────────────────────────────────────────────────
   const abrirNuevo  = () => { setForm(GRUPO_FORM_INIT); setEmpresaInput(''); setModal('nuevo') }
   const abrirEditar = (g) => {
-    setForm({ id: g.id, nombre: g.nombre, tipoLeche: g.tipoLeche ?? '', rutaIds: [...g.rutaIds], empresas: [...g.empresas], precioRinde: g.precioRinde ?? '' })
+    // Normalizar nombres de empresa contra los nombres canónicos existentes (sin distinción de mayúsculas/tildes)
+    const empresasNorm = [...new Set(
+      g.empresas.map(e => {
+        const canon = empresasExistentes.find(ex => ex.toLowerCase() === e.toLowerCase())
+        return canon ?? e
+      })
+    )]
+    setForm({ id: g.id, nombre: g.nombre, tipoLeche: g.tipoLeche ?? '', rutaIds: [...g.rutaIds], empresas: empresasNorm, precioRinde: g.precioRinde ?? '' })
     setEmpresaInput(''); setModal('editar')
   }
   const toggleRuta = (id) => setForm(f => ({
@@ -89,7 +96,7 @@ export default function Transporte() {
     if (!v || form.empresas.map(e => e.toLowerCase()).includes(v.toLowerCase())) return
     setForm(f => ({ ...f, empresas: [...f.empresas, v] })); setEmpresaInput('')
   }
-  const quitarEmpresa = (emp) => setForm(f => ({ ...f, empresas: f.empresas.filter(e => e !== emp) }))
+  const quitarEmpresa = (emp) => setForm(f => ({ ...f, empresas: f.empresas.filter(e => e.toLowerCase() !== emp.toLowerCase()) }))
 
   const guardarGrupo = async () => {
     if (!form.nombre.trim()) return

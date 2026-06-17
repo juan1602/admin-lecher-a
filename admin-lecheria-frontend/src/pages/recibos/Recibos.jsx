@@ -166,6 +166,19 @@ function Recibos() {
     }
   }
 
+  const heredarEmpresas = async () => {
+    if (!confirm('¿Copiar las empresas de la quincena anterior con sus precios?\n\nSe creará un registro con 0 litros en el primer día para cada empresa nueva.')) return
+    try {
+      const res = await api.post(`/recibos/quincena/${quincenaAbierta.id}/heredar`)
+      await cargarRecibos(quincenaAbierta.id)
+      const n = res.data.length
+      if (n === 0) alert('Todas las empresas de la quincena anterior ya están registradas.')
+      else alert(`Se heredaron ${n} empresa${n > 1 ? 's' : ''} con sus precios.`)
+    } catch {
+      alert('No se pudo heredar. Verifica que haya una quincena anterior con recibos.')
+    }
+  }
+
   if (!quincenaAbierta) {
     return (
       <div style={{ textAlign: 'center', padding: '60px', color: '#999' }}>
@@ -183,10 +196,16 @@ function Recibos() {
           <h2 style={{ margin: 0 }}>Recibos de la empresa</h2>
           <span style={{ fontSize: '13px', color: '#666' }}>{quincenaAbierta.textoQuincena}</span>
         </div>
-        <button onClick={abrirNuevo}
-          style={{ background: '#6c63ff', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
-          + Nueva empresa
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={heredarEmpresas}
+            style={{ background: '#f0f4ff', color: '#4527a0', border: '1px solid #d1c4e9', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
+            Heredar quincena anterior
+          </button>
+          <button onClick={abrirNuevo}
+            style={{ background: '#6c63ff', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
+            + Nueva empresa
+          </button>
+        </div>
       </div>
 
       {/* Navegador de días */}

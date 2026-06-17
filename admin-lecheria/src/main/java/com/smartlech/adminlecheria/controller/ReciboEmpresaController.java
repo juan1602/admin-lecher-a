@@ -71,6 +71,11 @@ public class ReciboEmpresaController {
         return ResponseEntity.ok(guardado);
     }
 
+    @PostMapping("/quincena/{quincenaId}/heredar")
+    public ResponseEntity<List<ReciboEmpresa>> heredar(@PathVariable Long quincenaId) {
+        return ResponseEntity.ok(reciboEmpresaService.heredarDeQuincenaAnterior(quincenaId));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         reciboEmpresaService.eliminar(id);

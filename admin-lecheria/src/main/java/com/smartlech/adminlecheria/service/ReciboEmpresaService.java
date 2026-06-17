@@ -17,8 +17,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -87,6 +89,53 @@ public class ReciboEmpresaService {
                 reciboEmpresaRepository.save(r);
             }
         }
+    }
+
+    public List<ReciboEmpresa> heredarDeQuincenaAnterior(Long quincenaId) {
+        Quincena quincena = quincenaRepository.findById(quincenaId)
+                .orElseThrow(() -> new RuntimeException("Quincena no encontrada"));
+
+        Quincena anterior = quincenaRepository.findAll().stream()
+                .filter(q -> !q.getId().equals(quincenaId) &&
+                             q.getFechaFin().isBefore(quincena.getFechaInicio()))
+                .max(Comparator.comparing(Quincena::getFechaFin))
+                .orElse(null);
+
+        if (anterior == null) return new ArrayList<>();
+
+        List<ReciboEmpresa> recibosAnteriores = reciboEmpresaRepository.findByQuincenaId(anterior.getId());
+        List<ReciboEmpresa> existentesNueva   = reciboEmpresaRepository.findByQuincenaId(quincenaId);
+
+        // Empresas distintas de la quincena anterior (última config conocida)
+        Map<String, ReciboEmpresa> empresasMap = new LinkedHashMap<>();
+        for (ReciboEmpresa r : recibosAnteriores) {
+            if (r.getNombreRecibo() != null)
+                empresasMap.put(r.getNombreRecibo().trim().toLowerCase(), r);
+        }
+
+        // Empresas que ya tienen al menos un recibo en la nueva quincena
+        Set<String> yaExisten = existentesNueva.stream()
+                .filter(r -> r.getNombreRecibo() != null)
+                .map(r -> r.getNombreRecibo().trim().toLowerCase())
+                .collect(Collectors.toSet());
+
+        LocalDate primerDia = quincena.getFechaInicio();
+        List<ReciboEmpresa> creados = new ArrayList<>();
+        for (ReciboEmpresa ref : empresasMap.values()) {
+            if (!yaExisten.contains(ref.getNombreRecibo().trim().toLowerCase())) {
+                ReciboEmpresa nuevo = new ReciboEmpresa();
+                nuevo.setQuincena(quincena);
+                nuevo.setNombreRecibo(ref.getNombreRecibo().trim());
+                nuevo.setPrecioLitro(ref.getPrecioLitro());
+                nuevo.setPrecioTransporte(ref.getPrecioTransporte());
+                nuevo.setSoloTransporte(ref.getSoloTransporte());
+                nuevo.setRuta(ref.getRuta());
+                nuevo.setFecha(primerDia);
+                nuevo.setLitrosRecibidos(0.0);
+                creados.add(reciboEmpresaRepository.save(nuevo));
+            }
+        }
+        return creados;
     }
 
     public TransporteResumenDTO resumenTransporte(Long quincenaId) {
