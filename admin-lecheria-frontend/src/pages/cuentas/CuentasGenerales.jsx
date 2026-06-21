@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import api from '../../api/axios'
 import { useRutaVista } from '../../context/RutaVistaContext'
 import { pdfCuentasGenerales } from '../../utils/pdf'
@@ -27,6 +27,7 @@ function CuentasGenerales() {
   const [formComb, setFormComb] = useState({ descripcion: '', valor: '', fecha: '' })
   const [mostrarFormComb, setMostrarFormComb] = useState(false)
   const [editando, setEditando] = useState(null)
+  const heredadosRef = useRef(new Set())
 
   // Clave de ruta: IDs ordenados separados por coma, ej: "1,2" o "3"
   const rutaContexto = useMemo(
@@ -64,14 +65,23 @@ function CuentasGenerales() {
       setRindeTotal(vistaRes.data.rindeValorTotal || 0)
       setExcedentesData(excRes.data)
       setResumenProveedores(resumenRes.data.proveedores || [])
-      await cargarDescuentos(id, ctx)
+      await inicializarDescuentos(id, ctx)
       await cargarCombustibles(id, ctx)
     } catch {}
     setCargando(false)
   }
 
   const cargarDescuentos = async (id, ctx) => {
-    try { await api.post(`/descuentos-cuenta/quincena/${id}/heredar?rutaContexto=${ctx}`) } catch {}
+    const r = await api.get(`/descuentos-cuenta/quincena/${id}?rutaContexto=${ctx}`)
+    setDescuentos(r.data)
+  }
+
+  const inicializarDescuentos = async (id, ctx) => {
+    const key = `${id}:${ctx}`
+    if (!heredadosRef.current.has(key)) {
+      try { await api.post(`/descuentos-cuenta/quincena/${id}/heredar?rutaContexto=${ctx}`) } catch {}
+      heredadosRef.current.add(key)
+    }
     const r = await api.get(`/descuentos-cuenta/quincena/${id}?rutaContexto=${ctx}`)
     setDescuentos(r.data)
   }
