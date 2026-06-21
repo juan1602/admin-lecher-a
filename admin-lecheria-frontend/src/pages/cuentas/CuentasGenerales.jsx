@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import api from '../../api/axios'
 import { useRutaVista } from '../../context/RutaVistaContext'
 import { pdfCuentasGenerales } from '../../utils/pdf'
@@ -27,7 +27,6 @@ function CuentasGenerales() {
   const [formComb, setFormComb] = useState({ descripcion: '', valor: '', fecha: '' })
   const [mostrarFormComb, setMostrarFormComb] = useState(false)
   const [editando, setEditando] = useState(null)
-  const heredadosRef = useRef(new Set())
 
   // Clave de ruta: IDs ordenados separados por coma, ej: "1,2" o "3"
   const rutaContexto = useMemo(
@@ -65,7 +64,7 @@ function CuentasGenerales() {
       setRindeTotal(vistaRes.data.rindeValorTotal || 0)
       setExcedentesData(excRes.data)
       setResumenProveedores(resumenRes.data.proveedores || [])
-      await inicializarDescuentos(id, ctx)
+      await cargarDescuentos(id, ctx)
       await cargarCombustibles(id, ctx)
     } catch {}
     setCargando(false)
@@ -76,14 +75,9 @@ function CuentasGenerales() {
     setDescuentos(r.data)
   }
 
-  const inicializarDescuentos = async (id, ctx) => {
-    const key = `${id}:${ctx}`
-    if (!heredadosRef.current.has(key)) {
-      try { await api.post(`/descuentos-cuenta/quincena/${id}/heredar?rutaContexto=${ctx}`) } catch {}
-      heredadosRef.current.add(key)
-    }
-    const r = await api.get(`/descuentos-cuenta/quincena/${id}?rutaContexto=${ctx}`)
-    setDescuentos(r.data)
+  const heredarDescuentos = async () => {
+    try { await api.post(`/descuentos-cuenta/quincena/${quincenaId}/heredar?rutaContexto=${rutaContexto}`) } catch {}
+    recargarDescuentos()
   }
 
   const cargarCombustibles = async (id, ctx) => {
@@ -245,13 +239,22 @@ function CuentasGenerales() {
     <div>
       <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h2 style={{ margin: 0 }}>Cuentas Generales</h2>
-        <button
-          onClick={() => pdfCuentasGenerales({ quincenaTexto, rutaNombres: nombreRutas, transporteTotal, rindeTotal, descuentos, combustibles, totalExcedentes })}
-          disabled={!quincenaId}
-          style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: '600', cursor: quincenaId ? 'pointer' : 'not-allowed', opacity: quincenaId ? 1 : 0.5 }}
-        >
-          PDF
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={heredarDescuentos}
+            disabled={!quincenaId}
+            style={{ background: '#6c63ff', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: '600', cursor: quincenaId ? 'pointer' : 'not-allowed', opacity: quincenaId ? 1 : 0.5 }}
+          >
+            Heredar quincena anterior
+          </button>
+          <button
+            onClick={() => pdfCuentasGenerales({ quincenaTexto, rutaNombres: nombreRutas, transporteTotal, rindeTotal, descuentos, combustibles, totalExcedentes })}
+            disabled={!quincenaId}
+            style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: '600', cursor: quincenaId ? 'pointer' : 'not-allowed', opacity: quincenaId ? 1 : 0.5 }}
+          >
+            PDF
+          </button>
+        </div>
       </div>
 
       {/* Selectores: quincena + rutas */}
