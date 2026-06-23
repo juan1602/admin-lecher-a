@@ -306,6 +306,7 @@ export default function CuentasPersonalizadas() {
             cuentaNombre: cuentaActiva.nombre,
             quincenaTexto: quincenas.find(q => String(q.id) === quincenaId)?.textoQuincena || '',
             ingresos: ingresosSeleccionados,
+            ingresosManual,
             descuentos,
           })}
           style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}

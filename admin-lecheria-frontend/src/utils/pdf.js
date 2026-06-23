@@ -32,12 +32,14 @@ function seccionTitulo(doc, y, texto, color) {
 }
 
 // ── Cuentas Personalizadas ────────────────────────────────────────────────────
-export function pdfCuentaPersonalizada({ cuentaNombre, quincenaTexto, ingresos, descuentos }) {
+export function pdfCuentaPersonalizada({ cuentaNombre, quincenaTexto, ingresos, ingresosManual = [], descuentos }) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
   let y = encabezado(doc, 'CUENTAS PERSONALIZADAS', `${cuentaNombre}  ·  ${quincenaTexto || ''}`)
 
-  const totalIngresos   = ingresos.reduce((s, g) => s + g.valor, 0)
+  const totalRecibos    = ingresos.reduce((s, g) => s + g.valor, 0)
+  const totalManual     = ingresosManual.reduce((s, m) => s + m.valor, 0)
+  const totalIngresos   = totalRecibos + totalManual
   const totalDescuentos = descuentos.reduce((s, d) => s + d.valor, 0)
   const saldoFinal      = totalIngresos - totalDescuentos
 
@@ -48,6 +50,7 @@ export function pdfCuentaPersonalizada({ cuentaNombre, quincenaTexto, ingresos, 
     head: [['Recibo / Empresa', 'Litros totales', 'Valor']],
     body: [
       ...ingresos.map(g => [g.nombre, fmtL(g.litros) + ' L', '$ ' + fmt(g.valor)]),
+      ...ingresosManual.map(m => [m.descripcion, '—', '$ ' + fmt(m.valor)]),
       [{ content: 'TOTAL INGRESOS', styles: { fontStyle: 'bold' } }, '', { content: '$ ' + fmt(totalIngresos), styles: { fontStyle: 'bold', textColor: [39, 174, 96] } }],
     ],
     styles: { fontSize: 9, cellPadding: 3 },
