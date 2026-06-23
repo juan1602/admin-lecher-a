@@ -99,6 +99,14 @@ public class CuentaPersonalizadaService {
         return ingresoManualRepository.save(ingreso);
     }
 
+    public IngresoManualCuenta actualizarIngresoManual(Long id, String descripcion, Double valor) {
+        IngresoManualCuenta m = ingresoManualRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Ingreso manual no encontrado: " + id));
+        m.setDescripcion(descripcion);
+        m.setValor(valor);
+        return ingresoManualRepository.save(m);
+    }
+
     public void eliminarIngresoManual(Long id) {
         ingresoManualRepository.deleteById(id);
     }

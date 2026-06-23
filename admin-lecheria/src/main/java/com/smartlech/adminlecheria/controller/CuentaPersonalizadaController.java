@@ -87,6 +87,15 @@ public class CuentaPersonalizadaController {
         return ResponseEntity.ok(service.agregarIngresoManual(id, quincenaId, descripcion, valor));
     }
 
+    @PutMapping("/ingresos-manual/{id}")
+    public ResponseEntity<IngresoManualCuenta> actualizarIngresoManual(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        String descripcion = (String) body.get("descripcion");
+        Double valor = ((Number) body.get("valor")).doubleValue();
+        return ResponseEntity.ok(service.actualizarIngresoManual(id, descripcion, valor));
+    }
+
     @DeleteMapping("/ingresos-manual/{id}")
     public ResponseEntity<Void> eliminarIngresoManual(@PathVariable Long id) {
         service.eliminarIngresoManual(id);

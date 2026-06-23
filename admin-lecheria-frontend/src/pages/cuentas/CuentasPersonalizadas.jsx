@@ -21,6 +21,7 @@ export default function CuentasPersonalizadas() {
   const [descuentos, setDescuentos]           = useState([])
   const [formDesc, setFormDesc]               = useState({ descripcion: '', valor: '' })
   const [formManual, setFormManual]           = useState({ descripcion: '', valor: '' })
+  const [editandoManual, setEditandoManual]   = useState(null)
   const [vistaMovil, setVistaMovil]           = useState('lista')
 
   // Modales
@@ -85,6 +86,18 @@ export default function CuentasPersonalizadas() {
       )
       setIngresosManual(prev => [...prev, data])
       setFormManual({ descripcion: '', valor: '' })
+    } catch (e) { console.error(e) }
+  }
+
+  async function guardarEdicionManual() {
+    if (!editandoManual) return
+    try {
+      const { data } = await api.put(
+        `/cuentas-personalizadas/ingresos-manual/${editandoManual.id}`,
+        { descripcion: editandoManual.descripcion, valor: parseFloat(editandoManual.valor) }
+      )
+      setIngresosManual(prev => prev.map(m => m.id === data.id ? data : m))
+      setEditandoManual(null)
     } catch (e) { console.error(e) }
   }
 
@@ -481,10 +494,31 @@ export default function CuentasPersonalizadas() {
             Ingresos manuales
           </div>
           {ingresosManual.map(m => (
-            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
-              <span style={{ flex: 1, fontSize: '13px', color: '#333' }}>{m.descripcion}</span>
-              <span style={{ fontSize: '13px', fontWeight: '600', color: '#27ae60' }}>${fmt(m.valor)}</span>
-              <button onClick={() => eliminarIngresoManual(m.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: '16px', lineHeight: 1, padding: '2px' }}>✕</button>
+            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
+              {editandoManual?.id === m.id ? (
+                <>
+                  <input
+                    value={editandoManual.descripcion}
+                    onChange={e => setEditandoManual(prev => ({ ...prev, descripcion: e.target.value }))}
+                    style={{ flex: 1, padding: '5px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px', outline: 'none' }}
+                  />
+                  <input
+                    type="number"
+                    value={editandoManual.valor}
+                    onChange={e => setEditandoManual(prev => ({ ...prev, valor: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && guardarEdicionManual()}
+                    style={{ width: '90px', padding: '5px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px', outline: 'none' }}
+                  />
+                  <button onClick={guardarEdicionManual} style={{ background: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer' }}>✓</button>
+                  <button onClick={() => setEditandoManual(null)} style={{ background: '#f5f5f5', color: '#666', border: 'none', borderRadius: '5px', padding: '5px 8px', fontSize: '12px', cursor: 'pointer' }}>✕</button>
+                </>
+              ) : (
+                <>
+                  <span onClick={() => setEditandoManual({ id: m.id, descripcion: m.descripcion, valor: m.valor })} style={{ flex: 1, fontSize: '13px', color: '#333', cursor: 'pointer' }}>{m.descripcion}</span>
+                  <span onClick={() => setEditandoManual({ id: m.id, descripcion: m.descripcion, valor: m.valor })} style={{ fontSize: '13px', fontWeight: '600', color: '#27ae60', cursor: 'pointer' }}>${fmt(m.valor)}</span>
+                  <button onClick={() => eliminarIngresoManual(m.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: '16px', lineHeight: 1, padding: '2px' }}>✕</button>
+                </>
+              )}
             </div>
           ))}
           <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
