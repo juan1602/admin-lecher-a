@@ -17,8 +17,10 @@ export default function CuentasPersonalizadas() {
   const [cuentaActiva, setCuentaActiva]       = useState(null)
   const [recibosAgrupados, setRecibosAgrupados] = useState([])
   const [ingresosNombres, setIngresosNombres] = useState(new Set())
+  const [ingresosManual, setIngresosManual]   = useState([])
   const [descuentos, setDescuentos]           = useState([])
   const [formDesc, setFormDesc]               = useState({ descripcion: '', valor: '' })
+  const [formManual, setFormManual]           = useState({ descripcion: '', valor: '' })
   const [vistaMovil, setVistaMovil]           = useState('lista')
 
   // Modales
@@ -58,24 +60,45 @@ export default function CuentasPersonalizadas() {
 
   async function cargarDetalle(cuentaId, qId) {
     try {
-      const [ri, rd] = await Promise.all([
+      const [ri, rm, rd] = await Promise.all([
         api.get(`/cuentas-personalizadas/${cuentaId}/ingresos?quincenaId=${qId}`),
+        api.get(`/cuentas-personalizadas/${cuentaId}/ingresos-manual?quincenaId=${qId}`),
         api.get(`/cuentas-personalizadas/${cuentaId}/descuentos?quincenaId=${qId}`),
       ])
       let ingresos = ri.data
-      // Si la quincena no tiene ingresos aún, heredar de la quincena anterior
       if (ingresos.length === 0) {
         const heredados = await api.post(`/cuentas-personalizadas/${cuentaId}/ingresos/heredar?quincenaId=${qId}`)
         ingresos = heredados.data
       }
       setIngresosNombres(new Set(ingresos.map(i => i.nombreRecibo)))
+      setIngresosManual(rm.data)
       setDescuentos(rd.data)
+    } catch (e) { console.error(e) }
+  }
+
+  async function agregarIngresoManual() {
+    if (!formManual.descripcion.trim() || !formManual.valor || !cuentaActiva || !quincenaId) return
+    try {
+      const { data } = await api.post(
+        `/cuentas-personalizadas/${cuentaActiva.id}/ingresos-manual?quincenaId=${quincenaId}`,
+        { descripcion: formManual.descripcion.trim(), valor: parseFloat(formManual.valor) }
+      )
+      setIngresosManual(prev => [...prev, data])
+      setFormManual({ descripcion: '', valor: '' })
+    } catch (e) { console.error(e) }
+  }
+
+  async function eliminarIngresoManual(id) {
+    try {
+      await api.delete(`/cuentas-personalizadas/ingresos-manual/${id}`)
+      setIngresosManual(prev => prev.filter(m => m.id !== id))
     } catch (e) { console.error(e) }
   }
 
   function seleccionarCuenta(cuenta) {
     setCuentaActiva(cuenta)
     setIngresosNombres(new Set())
+    setIngresosManual([])
     setDescuentos([])
     if (quincenaId) cargarDetalle(cuenta.id, quincenaId)
     setVistaMovil('detalle')
@@ -88,7 +111,7 @@ export default function CuentasPersonalizadas() {
       await api.delete(`/cuentas-personalizadas/${id}`)
       setCuentas(prev => prev.filter(c => c.id !== id))
       if (cuentaActiva?.id === id) {
-        setCuentaActiva(null); setIngresosNombres(new Set()); setDescuentos([])
+        setCuentaActiva(null); setIngresosNombres(new Set()); setIngresosManual([]); setDescuentos([])
         setVistaMovil('lista')
       }
     } catch (e) { console.error(e) }
@@ -173,7 +196,9 @@ export default function CuentasPersonalizadas() {
 
   // ── Totales ───────────────────────────────────────────────────────────────
   const ingresosSeleccionados = recibosAgrupados.filter(g => ingresosNombres.has(g.nombre))
-  const totalIngresos   = ingresosSeleccionados.reduce((s, g) => s + g.valor, 0)
+  const totalRecibos    = ingresosSeleccionados.reduce((s, g) => s + g.valor, 0)
+  const totalManual     = ingresosManual.reduce((s, m) => s + m.valor, 0)
+  const totalIngresos   = totalRecibos + totalManual
   const totalDescuentos = descuentos.reduce((s, d) => s + d.valor, 0)
   const saldoFinal      = totalIngresos - totalDescuentos
 
@@ -316,6 +341,12 @@ export default function CuentasPersonalizadas() {
                 </div>
               ))
             )}
+            {ingresosManual.map(m => (
+              <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', borderBottom: '1px solid #f5f5f5' }}>
+                <div style={{ fontSize: '13px', fontWeight: '500', color: '#333' }}>{m.descripcion}</div>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: '#27ae60' }}>${fmt(m.valor)}</div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -445,7 +476,35 @@ export default function CuentasPersonalizadas() {
         'Seleccionar ingresos',
         confirmarIngresos,
         () => setModalIngresos(false),
-        null
+        <div>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '8px' }}>
+            Ingresos manuales
+          </div>
+          {ingresosManual.map(m => (
+            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
+              <span style={{ flex: 1, fontSize: '13px', color: '#333' }}>{m.descripcion}</span>
+              <span style={{ fontSize: '13px', fontWeight: '600', color: '#27ae60' }}>${fmt(m.valor)}</span>
+              <button onClick={() => eliminarIngresoManual(m.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: '16px', lineHeight: 1, padding: '2px' }}>✕</button>
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+            <input
+              value={formManual.descripcion}
+              onChange={e => setFormManual(f => ({ ...f, descripcion: e.target.value }))}
+              placeholder="Descripción..."
+              style={{ flex: 1, padding: '7px 10px', borderRadius: '7px', border: '1px solid #e0e0e0', fontSize: '13px', outline: 'none' }}
+            />
+            <input
+              type="number"
+              value={formManual.valor}
+              onChange={e => setFormManual(f => ({ ...f, valor: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && agregarIngresoManual()}
+              placeholder="Valor"
+              style={{ width: '100px', padding: '7px 10px', borderRadius: '7px', border: '1px solid #e0e0e0', fontSize: '13px', outline: 'none' }}
+            />
+            <button onClick={agregarIngresoManual} style={{ background: '#27ae60', color: 'white', border: 'none', borderRadius: '7px', padding: '7px 14px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>+</button>
+          </div>
+        </div>
       )}
     </>
   )

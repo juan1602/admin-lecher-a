@@ -68,6 +68,31 @@ public class CuentaPersonalizadaController {
         return ResponseEntity.noContent().build();
     }
 
+    // ── Ingresos manuales ─────────────────────────────────────────────────
+
+    @GetMapping("/{id}/ingresos-manual")
+    public List<IngresoManualCuenta> listarIngresosManual(
+            @PathVariable Long id,
+            @RequestParam Long quincenaId) {
+        return service.listarIngresosManual(id, quincenaId);
+    }
+
+    @PostMapping("/{id}/ingresos-manual")
+    public ResponseEntity<IngresoManualCuenta> agregarIngresoManual(
+            @PathVariable Long id,
+            @RequestParam Long quincenaId,
+            @RequestBody Map<String, Object> body) {
+        String descripcion = (String) body.get("descripcion");
+        Double valor = ((Number) body.get("valor")).doubleValue();
+        return ResponseEntity.ok(service.agregarIngresoManual(id, quincenaId, descripcion, valor));
+    }
+
+    @DeleteMapping("/ingresos-manual/{id}")
+    public ResponseEntity<Void> eliminarIngresoManual(@PathVariable Long id) {
+        service.eliminarIngresoManual(id);
+        return ResponseEntity.noContent().build();
+    }
+
     // ── Descuentos ────────────────────────────────────────────────────────
 
     @GetMapping("/{id}/descuentos")

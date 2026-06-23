@@ -15,6 +15,7 @@ public class CuentaPersonalizadaService {
 
     private final CuentaPersonalizadaRepository cuentaRepository;
     private final IngresoCuentaRepository ingresoRepository;
+    private final IngresoManualCuentaRepository ingresoManualRepository;
     private final DescuentoCuentaPersonalRepository descuentoRepository;
     private final QuincenaRepository quincenaRepository;
 
@@ -29,6 +30,7 @@ public class CuentaPersonalizadaService {
     @Transactional
     public void eliminar(Long id) {
         ingresoRepository.deleteByCuentaId(id);
+        ingresoManualRepository.deleteByCuentaId(id);
         descuentoRepository.deleteByCuentaId(id);
         cuentaRepository.deleteById(id);
     }
@@ -76,6 +78,29 @@ public class CuentaPersonalizadaService {
 
     public void eliminarDescuento(Long id) {
         descuentoRepository.deleteById(id);
+    }
+
+    // ── Ingresos manuales ──────────────────────────────────────────────────
+
+    public List<IngresoManualCuenta> listarIngresosManual(Long cuentaId, Long quincenaId) {
+        return ingresoManualRepository.findByCuentaIdAndQuincenaId(cuentaId, quincenaId);
+    }
+
+    public IngresoManualCuenta agregarIngresoManual(Long cuentaId, Long quincenaId, String descripcion, Double valor) {
+        CuentaPersonalizada cuenta = cuentaRepository.findById(cuentaId)
+            .orElseThrow(() -> new RuntimeException("Cuenta no encontrada: " + cuentaId));
+        Quincena quincena = quincenaRepository.findById(quincenaId)
+            .orElseThrow(() -> new RuntimeException("Quincena no encontrada: " + quincenaId));
+        IngresoManualCuenta ingreso = new IngresoManualCuenta();
+        ingreso.setCuenta(cuenta);
+        ingreso.setQuincena(quincena);
+        ingreso.setDescripcion(descripcion);
+        ingreso.setValor(valor);
+        return ingresoManualRepository.save(ingreso);
+    }
+
+    public void eliminarIngresoManual(Long id) {
+        ingresoManualRepository.deleteById(id);
     }
 
     @Transactional
