@@ -38,8 +38,10 @@ export default function OfflineBanner() {
         await api.post('/recolecciones', payload)
         eliminarPendiente(_localId)
         exitosos++
-      } catch {
-        // se intentará en el próximo ciclo
+      } catch (e) {
+        // 409 = ya existe en el servidor (ej. se guardó aunque la petición pareció fallar): sacarlo de la cola
+        if (e.response?.status === 409) eliminarPendiente(rec._localId)
+        // otros errores: se intentará en el próximo ciclo
       }
     }
     setSincronizando(false)

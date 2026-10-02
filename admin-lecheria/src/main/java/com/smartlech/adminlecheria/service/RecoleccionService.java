@@ -54,7 +54,7 @@ public class RecoleccionService {
                 .anyMatch(r -> r.getFecha().equals(recoleccion.getFecha()));
 
             if (yaExiste) {
-                throw new RuntimeException("Ya existe una recolección para este proveedor en esta fecha");
+                throw new IllegalStateException("Ya existe una recolección para este proveedor en esta fecha");
             }
         }
 

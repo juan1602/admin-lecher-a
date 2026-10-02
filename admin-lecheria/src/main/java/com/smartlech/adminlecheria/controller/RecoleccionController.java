@@ -5,6 +5,7 @@ import com.smartlech.adminlecheria.entity.Recoleccion;
 import com.smartlech.adminlecheria.service.RecoleccionService;
 import com.smartlech.adminlecheria.repository.RecoleccionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -39,8 +40,13 @@ public class RecoleccionController {
     }
 
     @PostMapping
-    public ResponseEntity<Recoleccion> crear(@RequestBody Recoleccion recoleccion) {
-        return ResponseEntity.ok(recoleccionService.guardar(recoleccion));
+    public ResponseEntity<?> crear(@RequestBody Recoleccion recoleccion) {
+        try {
+            return ResponseEntity.ok(recoleccionService.guardar(recoleccion));
+        } catch (IllegalStateException e) {
+            // Duplicado (mismo proveedor y fecha): 409 para que el frontend lo distinga de un error real
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        }
     }
 
     @PostMapping("/sincronizar")

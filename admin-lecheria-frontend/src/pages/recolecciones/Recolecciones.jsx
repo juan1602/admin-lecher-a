@@ -14,6 +14,7 @@ function Recolecciones() {
   const [modalForm, setModalForm] = useState({ conductorId: '', litros: '', vale: '' })
   const [filtroLeche, setFiltroLeche] = useState('')
   const [busqueda, setBusqueda] = useState('')
+  const [guardando, setGuardando] = useState(false)
 
   useEffect(() => { cargarDatos() }, [])
 
@@ -97,6 +98,8 @@ function Recolecciones() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (guardando) return
+    setGuardando(true)
     try {
       if (modal.recoleccionId) {
         await api.put(`/recolecciones/${modal.recoleccionId}`, {
@@ -130,7 +133,17 @@ function Recolecciones() {
       cerrarModal()
       cargarRecolecciones(quincenaAbierta.id)
     } catch (error) {
-      alert('Error al guardar: ' + (error.response?.data || error.message))
+      if (error.response?.status === 409) {
+        // Ya estaba registrada (otro dispositivo o un intento anterior que sí llegó): refrescar en vez de duplicar
+        cerrarModal()
+        cargarRecolecciones(quincenaAbierta.id)
+        alert('Esta recolección ya estaba registrada. Se actualizó la lista; si los litros no son correctos, usa Editar.')
+        return
+      }
+      const msg = error.response?.data
+      alert('Error al guardar: ' + (typeof msg === 'string' ? msg : error.message))
+    } finally {
+      setGuardando(false)
     }
   }
 
@@ -364,9 +377,9 @@ function Recolecciones() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <button type="submit"
-                  style={{ flex: 1, background: '#6c63ff', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: '600' }}>
-                  {modal.recoleccionId ? 'Actualizar' : 'Guardar'}
+                <button type="submit" disabled={guardando}
+                  style={{ flex: 1, background: '#6c63ff', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', cursor: guardando ? 'wait' : 'pointer', fontSize: '15px', fontWeight: '600', opacity: guardando ? 0.6 : 1 }}>
+                  {guardando ? 'Guardando...' : modal.recoleccionId ? 'Actualizar' : 'Guardar'}
                 </button>
                 <button type="button" onClick={cerrarModal}
                   style={{ background: '#f5f5f5', color: '#444', border: 'none', padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '15px' }}>
