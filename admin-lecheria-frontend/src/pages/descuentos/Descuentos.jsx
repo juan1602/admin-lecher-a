@@ -24,6 +24,7 @@ function Descuentos() {
   const [formFiltroRuta, setFormFiltroRuta] = useState('')
   const [formFiltroLeche, setFormFiltroLeche] = useState('')
   const [formBusqueda, setFormBusqueda] = useState('')
+  const [editando, setEditando] = useState(null) // { id, concepto, valor, fecha }
 
   useEffect(() => { cargarDatos() }, [])
 
@@ -75,6 +76,21 @@ function Descuentos() {
     if (confirm('¿Eliminar este descuento?')) {
       await api.delete(`/descuentos/${id}`)
       cargarDescuentos(quincenaAbierta.id)
+    }
+  }
+
+  const guardarEdicion = async () => {
+    if (!editando.concepto.trim() || !parseFloat(editando.valor)) return
+    try {
+      await api.put(`/descuentos/${editando.id}`, {
+        concepto: editando.concepto.trim(),
+        valor: parseFloat(editando.valor),
+        fecha: editando.fecha || null
+      })
+      setEditando(null)
+      cargarDescuentos(quincenaAbierta.id)
+    } catch {
+      alert('Error al actualizar el descuento')
     }
   }
 
@@ -257,7 +273,39 @@ function Descuentos() {
                   {/* Lista de descuentos */}
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <tbody>
-                      {lista.map((d, i) => (
+                      {lista.map((d, i) => editando?.id === d.id ? (
+                        <tr key={d.id} style={{ borderBottom: '1px solid #f5f5f5', background: '#f3f0ff' }}>
+                          <td style={{ padding: '8px 18px', width: '130px' }}>
+                            <input type="date" value={editando.fecha}
+                              min={quincenaAbierta?.fechaInicio}
+                              max={quincenaAbierta?.fechaFin}
+                              onChange={e => setEditando({ ...editando, fecha: e.target.value })}
+                              style={inp} />
+                          </td>
+                          <td style={{ padding: '8px 18px' }}>
+                            <input value={editando.concepto} autoFocus
+                              onChange={e => setEditando({ ...editando, concepto: e.target.value })}
+                              onKeyDown={e => { if (e.key === 'Enter') guardarEdicion(); if (e.key === 'Escape') setEditando(null) }}
+                              style={inp} />
+                          </td>
+                          <td style={{ padding: '8px 18px', width: '140px' }}>
+                            <input type="number" min="1" step="1" value={editando.valor}
+                              onChange={e => setEditando({ ...editando, valor: e.target.value })}
+                              onKeyDown={e => { if (e.key === 'Enter') guardarEdicion(); if (e.key === 'Escape') setEditando(null) }}
+                              style={{ ...inp, textAlign: 'right' }} />
+                          </td>
+                          <td style={{ padding: '8px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <button onClick={guardarEdicion}
+                              style={{ background: '#6c63ff', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', marginRight: '6px' }}>
+                              Guardar
+                            </button>
+                            <button onClick={() => setEditando(null)}
+                              style={{ background: '#f5f5f5', color: '#444', border: 'none', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                              Cancelar
+                            </button>
+                          </td>
+                        </tr>
+                      ) : (
                         <tr key={d.id} style={{ borderBottom: '1px solid #f5f5f5', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                           <td style={{ padding: '11px 18px', fontSize: '13px', color: '#888', whiteSpace: 'nowrap', width: '90px' }}>
                             {d.fecha ? formatFecha(d.fecha) : '—'}
@@ -268,7 +316,11 @@ function Descuentos() {
                           <td style={{ padding: '11px 18px', textAlign: 'right', fontWeight: '600', color: '#c62828', fontSize: '14px', whiteSpace: 'nowrap' }}>
                             -${fmt(d.valor)}
                           </td>
-                          <td style={{ padding: '11px 18px', textAlign: 'right', width: '80px' }}>
+                          <td style={{ padding: '11px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <button onClick={() => setEditando({ id: d.id, concepto: d.concepto ?? '', valor: d.valor ?? '', fecha: d.fecha ?? '' })}
+                              style={{ background: '#f3f0ff', color: '#4527a0', border: 'none', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', marginRight: '6px' }}>
+                              Editar
+                            </button>
                             <button onClick={() => eliminar(d.id)}
                               style={{ background: '#ffebee', color: '#c62828', border: 'none', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
                               Eliminar

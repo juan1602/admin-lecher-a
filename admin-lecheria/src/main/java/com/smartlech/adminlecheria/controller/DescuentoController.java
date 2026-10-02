@@ -5,7 +5,9 @@ import com.smartlech.adminlecheria.service.DescuentoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/descuentos")
@@ -23,6 +25,17 @@ public class DescuentoController {
     @PostMapping
     public ResponseEntity<Descuento> crear(@RequestBody Descuento descuento) {
         return ResponseEntity.ok(descuentoService.guardar(descuento));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Descuento> actualizar(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        String concepto = (String) body.get("concepto");
+        Double valor = ((Number) body.get("valor")).doubleValue();
+        String fecha = (String) body.get("fecha");
+        LocalDate fechaParsed = fecha != null && !fecha.isBlank() ? LocalDate.parse(fecha) : null;
+        return ResponseEntity.ok(descuentoService.actualizar(id, concepto, valor, fechaParsed));
     }
 
     @DeleteMapping("/{id}")

@@ -4,6 +4,7 @@ import com.smartlech.adminlecheria.entity.Descuento;
 import com.smartlech.adminlecheria.repository.DescuentoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -22,6 +23,15 @@ public class DescuentoService {
 
     public Descuento guardar(Descuento descuento) {
         return descuentoRepository.save(descuento);
+    }
+
+    public Descuento actualizar(Long id, String concepto, Double valor, LocalDate fecha) {
+        Descuento d = descuentoRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Descuento no encontrado: " + id));
+        d.setConcepto(concepto);
+        d.setValor(valor);
+        d.setFecha(fecha);
+        return descuentoRepository.save(d);
     }
 
     public void eliminar(Long id) {
