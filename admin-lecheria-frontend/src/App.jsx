@@ -1,4 +1,7 @@
+import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { getToken, EVENTO_SESION } from './lib/auth'
+import Login from './pages/login/Login'
 import Layout from './components/Layout'
 import OfflineBanner from './components/OfflineBanner'
 import { RutaVistaProvider } from './context/RutaVistaContext'
@@ -16,6 +19,16 @@ import CuentasPersonalizadas from './pages/cuentas/CuentasPersonalizadas'
 import Inicio from './pages/inicio/Inicio'
 
 function App() {
+  const [conSesion, setConSesion] = useState(!!getToken())
+
+  useEffect(() => {
+    const actualizar = () => setConSesion(!!getToken())
+    window.addEventListener(EVENTO_SESION, actualizar)
+    return () => window.removeEventListener(EVENTO_SESION, actualizar)
+  }, [])
+
+  if (!conSesion) return <Login />
+
   return (
     <RutaVistaProvider>
     <OfflineBanner />

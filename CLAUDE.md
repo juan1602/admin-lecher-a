@@ -21,16 +21,17 @@ El usuario habla español; responder en español. Moneda: pesos colombianos (`to
 
 Comandos:
 ```bash
-cd admin-lecheria && ./mvnw spring-boot:run        # http://localhost:8092
+cd admin-lecheria && APP_PASSWORD=xxx ./mvnw spring-boot:run   # http://localhost:8092 (PowerShell: $env:APP_PASSWORD='xxx'; ./mvnw spring-boot:run)
 cd admin-lecheria && ./mvnw -q compile             # verificar que compila
 cd admin-lecheria-frontend && npm run dev          # http://localhost:5173
 cd admin-lecheria-frontend && npx vite build       # verificar build
 ```
+Variables backend: `APP_PASSWORD` (contraseña de la app; sin ella nadie entra) y `CORS_ORIGINS` (opcional; por defecto localhost:5173/4173 y `https://admin-lecher-a.vercel.app`). Ambas en Render → Environment.
 `VITE_API_URL`: `.env.development` → localhost:8092/api, `.env.production` → `https://admin-lecheria-backend.onrender.com/api`.
 
 ## Convenciones de código
 
-- **Backend:** paquete `com.smartlech.adminlecheria` → `entity/`, `repository/`, `service/`, `controller/`, `dto/`, `config/`. Controladores con `@RestController @RequestMapping("/api/...") @CrossOrigin(origins="*")`. Errores con `throw new RuntimeException("mensaje")` (no hay `@ControllerAdvice`; salen como 500). Para PUT parciales se usa `@RequestBody Map<String,Object>` y `((Number) body.get("valor")).doubleValue()`.
+- **Backend:** paquete `com.smartlech.adminlecheria` → `entity/`, `repository/`, `service/`, `controller/`, `dto/`, `config/`. Controladores con `@RestController @RequestMapping("/api/...") @CrossOrigin(origins="*")` (el CORS real lo limita `config/CorsConfig`). Errores con `throw new RuntimeException("mensaje")` (no hay `@ControllerAdvice`; salen como 500). Para PUT parciales se usa `@RequestBody Map<String,Object>` y `((Number) body.get("valor")).doubleValue()`.
 - **"Heredar de quincena anterior"**: patrón repetido en varios servicios — busca la quincena con mayor `fechaFin` anterior a `fechaInicio` de la actual y copia registros que aún no existan.
 - **Frontend:** una carpeta por página en `src/pages/`, componentes con `useState`/`useEffect` y llamadas directas `api.get/post/put/delete` (`src/api/axios.js`). **Todos los estilos son inline** (`style={{...}}`), sin CSS modules ni librería UI. Colores: primario `#6c63ff`, oscuro `#1a1a2e`, rojo descuentos `#c62828`. Confirmaciones con `confirm()`, errores con `alert()`.
 - Edición en línea (fila que se vuelve inputs, Enter guarda / Escape cancela) es el patrón usado en Descuentos, Cuentas Generales e ingresos manuales.
@@ -52,6 +53,10 @@ cd admin-lecheria-frontend && npx vite build       # verificar build
 - **CuentaPersonalizada** (`cuentas_personalizadas`): nombre. Sus hijos por quincena: **IngresoCuenta** (nombreRecibo vinculado), **IngresoManualCuenta** (descripcion, valor), **DescuentoCuentaPersonal** (descripcion, valor). `MovimientoCuenta` parece sin uso.
 
 `rutaContexto` = IDs de ruta ordenados y separados por coma (`"1,2"`), identifica para qué combinación de rutas se registró algo en Cuentas Generales.
+
+## Acceso
+
+Contraseña compartida (la usan el dueño y su mamá). `POST /api/auth/login` `{password}` → `{token}` (vence en 30 días; firmado con HMAC de `APP_PASSWORD`, así que cambiarla cierra todas las sesiones). `config/AuthFilter` exige `Authorization: Bearer <token>` en todo `/api/**` menos el login → 401. Frontend: `lib/auth.js` (token en localStorage `auth_token`), interceptores en `api/axios.js` (401 → cierra sesión), `App.jsx` muestra `pages/login/Login.jsx` si no hay sesión, botón "Cerrar sesión" en `Layout`. Las recolecciones pendientes offline no se borran al cerrar sesión.
 
 ## API (`/api`)
 
@@ -101,22 +106,21 @@ Compartido: `components/Layout.jsx` (sidebar con selector global de rutas), `con
 ## Problemas conocidos (revisión 2026-10-12, ordenados por prioridad)
 
 ### 🔴 Alta — pueden dar valores de dinero equivocados o perder datos
-1. **Sin autenticación y CORS `*`** con backend público en Render: cualquiera con la URL puede leer/modificar/borrar datos.
-2. **El backend no impide modificar quincenas cerradas** (recolecciones, recibos, descuentos…).
-3. **Fechas "hoy" con `toISOString()` (UTC)**: después de las 7 pm sale el día siguiente (Recolecciones, Recibos, Descuentos, Inicio) → registros con fecha equivocada.
+1. **El backend no impide modificar quincenas cerradas** (recolecciones, recibos, descuentos…).
+2. **Fechas "hoy" con `toISOString()` (UTC)**: después de las 7 pm sale el día siguiente (Recolecciones, Recibos, Descuentos, Inicio) → registros con fecha equivocada.
 
 ### 🟠 Media — fallos de funcionamiento o descuadres en casos concretos
-4. **Modo offline de Recolecciones**: sin internet las tarjetas salen "sin registrar" (no se cachean recolecciones ni se muestran las pendientes); al sincronizar, un 409 borra el pendiente sin avisar aunque los litros sean distintos. Editar sin internet falla (solo se encolan registros nuevos).
-5. **Dos quincenas abiertas** con fechas distintas (si no se cierra la anterior) → `/quincenas/abierta` da 500. Las fechas cruzadas ya se bloquean.
-6. **`vista-completa` con `rutaIds`**: excluye grupos con rutaIds vacío y recibos sin ruta; además un grupo con rutas 1,2 suma lo recogido de ambas aunque el filtro sea solo la 1 (los recibos sí se filtran) → rinde por ruta descuadrado.
-7. **Recolecciones duplicadas por concurrencia**: sin restricción única en BD (proveedor + fecha). El POST da 409 y el botón se bloquea, pero dos peticiones simultáneas aún podrían duplicar. `POST /recolecciones/sincronizar` no valida duplicados (hoy no lo usa el frontend).
-8. **Cuentas personalizadas re-heredan ingresos** si se dejan vacías.
+3. **Modo offline de Recolecciones**: sin internet las tarjetas salen "sin registrar" (no se cachean recolecciones ni se muestran las pendientes); al sincronizar, un 409 borra el pendiente sin avisar aunque los litros sean distintos. Editar sin internet falla (solo se encolan registros nuevos).
+4. **Dos quincenas abiertas** con fechas distintas (si no se cierra la anterior) → `/quincenas/abierta` da 500. Las fechas cruzadas ya se bloquean.
+5. **`vista-completa` con `rutaIds`**: excluye grupos con rutaIds vacío y recibos sin ruta; además un grupo con rutas 1,2 suma lo recogido de ambas aunque el filtro sea solo la 1 (los recibos sí se filtran) → rinde por ruta descuadrado.
+6. **Recolecciones duplicadas por concurrencia**: sin restricción única en BD (proveedor + fecha). El POST da 409 y el botón se bloquea, pero dos peticiones simultáneas aún podrían duplicar. `POST /recolecciones/sincronizar` no valida duplicados (hoy no lo usa el frontend).
+7. **Cuentas personalizadas re-heredan ingresos** si se dejan vacías.
 
 ### 🟡 Baja — detalles
-9. `ResumenQuincena.jsx` compara `tipoLeche === 'búfala'` (con tilde) → la etiqueta Búfala nunca aparece.
-10. `PUT /descuentos/{id}` con `valor` vacío → `NullPointerException` (500). La pantalla lo valida antes.
-11. ESLint tiene ~38 problemas previos (mayoría `react-hooks`); no bloquean el build.
-12. Solo existe el test `contextLoads()`.
+8. `ResumenQuincena.jsx` compara `tipoLeche === 'búfala'` (con tilde) → la etiqueta Búfala nunca aparece.
+9. `PUT /descuentos/{id}` con `valor` vacío → `NullPointerException` (500). La pantalla lo valida antes.
+10. ESLint tiene ~38 problemas previos (mayoría `react-hooks`); no bloquean el build.
+11. Solo existe el test `contextLoads()`.
 
 ## Tip IDE
 

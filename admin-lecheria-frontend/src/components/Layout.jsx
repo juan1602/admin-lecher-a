@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useRutaVista } from '../context/RutaVistaContext'
+import { cerrarSesion } from '../lib/auth'
 
 const MENU = [
   { path: '/',             label: 'Inicio' },
@@ -109,6 +110,13 @@ function Layout({ children }) {
           })}
         </div>
       )}
+
+      <div style={{ padding: '12px 16px', borderTop: '1px solid #2a2a4a', marginTop: '8px' }}>
+        <button onClick={() => { if (confirm('¿Cerrar sesión en este dispositivo?')) cerrarSesion() }}
+          style={{ width: '100%', textAlign: 'left', padding: '7px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: 'transparent', color: '#888', fontSize: '13px' }}>
+          🔒 Cerrar sesión
+        </button>
+      </div>
     </aside>
   )
 
