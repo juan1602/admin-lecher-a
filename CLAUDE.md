@@ -35,6 +35,7 @@ Variables backend: `APP_PASSWORD` (contraseña de la app; sin ella nadie entra) 
 - **"Heredar de quincena anterior"**: patrón repetido en varios servicios — busca la quincena con mayor `fechaFin` anterior a `fechaInicio` de la actual y copia registros que aún no existan.
 - **Frontend:** una carpeta por página en `src/pages/`, componentes con `useState`/`useEffect` y llamadas directas `api.get/post/put/delete` (`src/api/axios.js`). **Todos los estilos son inline** (`style={{...}}`), sin CSS modules ni librería UI. Colores: primario `#6c63ff`, oscuro `#1a1a2e`, rojo descuentos `#c62828`. Confirmaciones con `confirm()`, errores con `alert()`.
 - Edición en línea (fila que se vuelve inputs, Enter guarda / Escape cancela) es el patrón usado en Descuentos, Cuentas Generales e ingresos manuales.
+- Fechas: usar `hoy()` / `fechaLocal(d)` de `utils/fecha.js` (hora local). **Nunca** `toISOString().split('T')[0]`: da UTC y después de las 7 pm sale el día siguiente.
 - Comentarios y nombres en español.
 
 ## Entidades (tabla)
@@ -107,20 +108,19 @@ Compartido: `components/Layout.jsx` (sidebar con selector global de rutas), `con
 
 ### 🔴 Alta — pueden dar valores de dinero equivocados o perder datos
 1. **El backend no impide modificar quincenas cerradas** (recolecciones, recibos, descuentos…).
-2. **Fechas "hoy" con `toISOString()` (UTC)**: después de las 7 pm sale el día siguiente (Recolecciones, Recibos, Descuentos, Inicio) → registros con fecha equivocada.
 
 ### 🟠 Media — fallos de funcionamiento o descuadres en casos concretos
-3. **Modo offline de Recolecciones**: sin internet las tarjetas salen "sin registrar" (no se cachean recolecciones ni se muestran las pendientes); al sincronizar, un 409 borra el pendiente sin avisar aunque los litros sean distintos. Editar sin internet falla (solo se encolan registros nuevos).
-4. **Dos quincenas abiertas** con fechas distintas (si no se cierra la anterior) → `/quincenas/abierta` da 500. Las fechas cruzadas ya se bloquean.
-5. **`vista-completa` con `rutaIds`**: excluye grupos con rutaIds vacío y recibos sin ruta; además un grupo con rutas 1,2 suma lo recogido de ambas aunque el filtro sea solo la 1 (los recibos sí se filtran) → rinde por ruta descuadrado.
-6. **Recolecciones duplicadas por concurrencia**: sin restricción única en BD (proveedor + fecha). El POST da 409 y el botón se bloquea, pero dos peticiones simultáneas aún podrían duplicar. `POST /recolecciones/sincronizar` no valida duplicados (hoy no lo usa el frontend).
-7. **Cuentas personalizadas re-heredan ingresos** si se dejan vacías.
+2. **Modo offline de Recolecciones**: sin internet las tarjetas salen "sin registrar" (no se cachean recolecciones ni se muestran las pendientes); al sincronizar, un 409 borra el pendiente sin avisar aunque los litros sean distintos. Editar sin internet falla (solo se encolan registros nuevos).
+3. **Dos quincenas abiertas** con fechas distintas (si no se cierra la anterior) → `/quincenas/abierta` da 500. Las fechas cruzadas ya se bloquean.
+4. **`vista-completa` con `rutaIds`**: excluye grupos con rutaIds vacío y recibos sin ruta; además un grupo con rutas 1,2 suma lo recogido de ambas aunque el filtro sea solo la 1 (los recibos sí se filtran) → rinde por ruta descuadrado.
+5. **Recolecciones duplicadas por concurrencia**: sin restricción única en BD (proveedor + fecha). El POST da 409 y el botón se bloquea, pero dos peticiones simultáneas aún podrían duplicar. `POST /recolecciones/sincronizar` no valida duplicados (hoy no lo usa el frontend).
+6. **Cuentas personalizadas re-heredan ingresos** si se dejan vacías.
 
 ### 🟡 Baja — detalles
-8. `ResumenQuincena.jsx` compara `tipoLeche === 'búfala'` (con tilde) → la etiqueta Búfala nunca aparece.
-9. `PUT /descuentos/{id}` con `valor` vacío → `NullPointerException` (500). La pantalla lo valida antes.
-10. ESLint tiene ~38 problemas previos (mayoría `react-hooks`); no bloquean el build.
-11. Solo existe el test `contextLoads()`.
+7. `ResumenQuincena.jsx` compara `tipoLeche === 'búfala'` (con tilde) → la etiqueta Búfala nunca aparece.
+8. `PUT /descuentos/{id}` con `valor` vacío → `NullPointerException` (500). La pantalla lo valida antes.
+9. ESLint tiene ~38 problemas previos (mayoría `react-hooks`); no bloquean el build.
+10. Solo existe el test `contextLoads()`.
 
 ## Tip IDE
 

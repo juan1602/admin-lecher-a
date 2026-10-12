@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
+import { hoy, fechaLocal } from '../../utils/fecha'
 import { guardarPendiente, cachearDatos, getDatosCache } from '../../lib/offlineStore'
 import { useRutaVista } from '../../context/RutaVistaContext'
 
@@ -9,7 +10,7 @@ function Recolecciones() {
   const [conductores, setConductores] = useState([])
   const [proveedores, setProveedores] = useState([])
   const [recolecciones, setRecolecciones] = useState([])
-  const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date().toISOString().split('T')[0])
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(hoy())
   const [modal, setModal] = useState(null) // { proveedor, recoleccionId? }
   const [modalForm, setModalForm] = useState({ conductorId: '', litros: '', vale: '' })
   const [filtroLeche, setFiltroLeche] = useState('')
@@ -157,7 +158,7 @@ function Recolecciones() {
   const cambiarDia = (delta) => {
     const d = new Date(fechaSeleccionada + 'T12:00:00')
     d.setDate(d.getDate() + delta)
-    const nueva = d.toISOString().split('T')[0]
+    const nueva = fechaLocal(d)
     if (quincenaAbierta) {
       if (nueva < quincenaAbierta.fechaInicio || nueva > quincenaAbierta.fechaFin) return
     }

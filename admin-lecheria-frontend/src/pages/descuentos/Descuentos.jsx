@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
+import { hoy } from '../../utils/fecha'
 
 const fmt = (n) => Math.round(n ?? 0).toLocaleString('es-CO')
 
@@ -9,14 +10,15 @@ const formatFecha = (fechaStr) => {
   return `${dia}/${mes}`
 }
 
-const FORM_VACIO = { proveedorId: '', concepto: '', valor: '', fecha: new Date().toISOString().split('T')[0] }
+// Función (no constante) para que la fecha sea la de hoy aunque la app lleve días abierta
+const formVacio = () => ({ proveedorId: '', concepto: '', valor: '', fecha: hoy() })
 
 function Descuentos() {
   const [quincenaAbierta, setQuincenaAbierta] = useState(null)
   const [proveedores, setProveedores] = useState([])
   const [rutas, setRutas] = useState([])
   const [descuentos, setDescuentos] = useState([])
-  const [form, setForm] = useState(FORM_VACIO)
+  const [form, setForm] = useState(formVacio)
   const [guardando, setGuardando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [filtroLeche, setFiltroLeche] = useState('')
@@ -63,7 +65,7 @@ function Descuentos() {
         valor: parseFloat(form.valor),
         fecha: form.fecha || null
       })
-      setForm(FORM_VACIO)
+      setForm(formVacio())
       cargarDescuentos(quincenaAbierta.id)
     } catch {
       alert('Error al guardar el descuento')

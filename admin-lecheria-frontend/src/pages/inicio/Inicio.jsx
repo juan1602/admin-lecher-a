@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../api/axios'
+import { hoy, fechaLocal } from '../../utils/fecha'
 import { useRutaVista } from '../../context/RutaVistaContext'
 
 const fmt  = (n) => Math.round(n ?? 0).toLocaleString('es-CO')
 const fmtL = (n) => Number(n ?? 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })
 
-const HOY = new Date().toISOString().split('T')[0]
 
 const ACCESOS = [
   { path: '/recolecciones', label: 'Recolecciones', desc: 'Registrar litros del día',  color: '#0288d1', icon: '🥛' },
@@ -18,6 +18,8 @@ const ACCESOS = [
 ]
 
 export default function Inicio() {
+  // Se calcula en cada render para que sea la fecha de hoy aunque la app lleve días abierta
+  const HOY = hoy()
   const { rutasSeleccionadas } = useRutaVista()
   const [quincena, setQuincena] = useState(null)
   const [stats, setStats]       = useState(null)
@@ -73,7 +75,7 @@ export default function Inicio() {
     const fin    = new Date(q.fechaFin    + 'T00:00:00')
     const hoyDate = new Date(HOY + 'T00:00:00')
     for (let d = new Date(inicio); d <= fin && d <= hoyDate; d.setDate(d.getDate() + 1)) {
-      const key = d.toISOString().split('T')[0]
+      const key = fechaLocal(d)
       dias.push({ fecha: key, litros: porFecha[key] ?? 0 })
     }
     setLitrosPorDia(dias)

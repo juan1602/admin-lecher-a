@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
+import { hoy, fechaLocal } from '../../utils/fecha'
 import { useRutaVista } from '../../context/RutaVistaContext'
 
 const fmt  = (n) => Math.round(n ?? 0).toLocaleString('es-CO')
@@ -8,14 +9,14 @@ const fmtL = (n) => Number(n ?? 0).toLocaleString('es-CO', { minimumFractionDigi
 const FORM_VACIO = {
   nombreRecibo: '', litrosRecibidos: '', precioLitro: '',
   precioTransporte: '', soloTransporte: false,
-  fecha: new Date().toISOString().split('T')[0], rutaId: ''
+  fecha: hoy(), rutaId: ''
 }
 
 function Recibos() {
   const { rutasDisponibles, rutasSeleccionadas } = useRutaVista()
   const [quincenaAbierta, setQuincenaAbierta] = useState(null)
   const [recibos, setRecibos]               = useState([])
-  const [fechaSeleccionada, setFecha]       = useState(new Date().toISOString().split('T')[0])
+  const [fechaSeleccionada, setFecha]       = useState(hoy())
   const [modal, setModal]                   = useState(null)  // { modo: 'nuevo'|'editar', empresa, recibo }
   const [form, setForm]                     = useState(FORM_VACIO)
   const [error, setError]                   = useState(null)
@@ -41,7 +42,7 @@ function Recibos() {
   const cambiarDia = (delta) => {
     const d = new Date(fechaSeleccionada + 'T12:00:00')
     d.setDate(d.getDate() + delta)
-    const nueva = d.toISOString().split('T')[0]
+    const nueva = fechaLocal(d)
     if (quincenaAbierta) {
       if (nueva < quincenaAbierta.fechaInicio || nueva > quincenaAbierta.fechaFin) return
     }

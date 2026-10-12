@@ -320,7 +320,7 @@ export default function CuentasPersonalizadas() {
           onClick={() => pdfCuentaPersonalizada({
             cuentaNombre: cuentaActiva.nombre,
             quincenaTexto: quincenas.find(q => String(q.id) === quincenaId)?.textoQuincena || '',
-            ingresos: ingresosSeleccionados,
+            ingresos: ingresosSeleccionados.map(g => ({ ...g, precioTexto: textoPrecios(g) })),
             ingresosManual,
             descuentos,
           })}

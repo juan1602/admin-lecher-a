@@ -47,15 +47,15 @@ export function pdfCuentaPersonalizada({ cuentaNombre, quincenaTexto, ingresos, 
   y = seccionTitulo(doc, y, 'INGRESOS', [39, 174, 96])
   autoTable(doc, {
     startY: y,
-    head: [['Recibo / Empresa', 'Litros totales', 'Valor']],
+    head: [['Recibo / Empresa', 'Litros totales', 'Precio', 'Valor']],
     body: [
-      ...ingresos.map(g => [g.nombre, fmtL(g.litros) + ' L', '$ ' + fmt(g.valor)]),
-      ...ingresosManual.map(m => [m.descripcion, '—', '$ ' + fmt(m.valor)]),
-      [{ content: 'TOTAL INGRESOS', styles: { fontStyle: 'bold' } }, '', { content: '$ ' + fmt(totalIngresos), styles: { fontStyle: 'bold', textColor: [39, 174, 96] } }],
+      ...ingresos.map(g => [g.nombre, fmtL(g.litros) + ' L', g.precioTexto || '—', '$ ' + fmt(g.valor)]),
+      ...ingresosManual.map(m => [m.descripcion, '—', '—', '$ ' + fmt(m.valor)]),
+      [{ content: 'TOTAL INGRESOS', styles: { fontStyle: 'bold' } }, '', '', { content: '$ ' + fmt(totalIngresos), styles: { fontStyle: 'bold', textColor: [39, 174, 96] } }],
     ],
     styles: { fontSize: 9, cellPadding: 3 },
     headStyles: { fillColor: [39, 174, 96], textColor: 255, fontStyle: 'bold' },
-    columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
+    columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
     margin: { left: 14, right: 14 },
   })
 
