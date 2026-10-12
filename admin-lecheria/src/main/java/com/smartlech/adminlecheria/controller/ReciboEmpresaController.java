@@ -46,29 +46,12 @@ public class ReciboEmpresaController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ReciboEmpresa> actualizar(@PathVariable Long id, @RequestBody ReciboEmpresa recibo) {
-        ReciboEmpresa existente = reciboEmpresaService.buscarPorId(id);
-        existente.setNombreRecibo(recibo.getNombreRecibo());
-        existente.setLitrosRecibidos(recibo.getLitrosRecibidos());
-        existente.setPrecioLitro(recibo.getPrecioLitro());
-        existente.setPrecioTransporte(recibo.getPrecioTransporte());
-        existente.setSoloTransporte(recibo.getSoloTransporte());
-        existente.setFecha(recibo.getFecha());
-        existente.setRuta(recibo.getRuta());
-        ReciboEmpresa guardado = reciboEmpresaService.guardar(existente);
-        Long quincenaId = existente.getQuincena().getId();
-        String nombre = existente.getNombreRecibo();
-        // Propagar precio a todos los días del mismo recibo en la quincena
-        reciboEmpresaService.propagarPrecio(
-            quincenaId, nombre,
-            recibo.getPrecioLitro(),
-            recibo.getPrecioTransporte(),
-            recibo.getSoloTransporte()
-        );
-        if (recibo.getRuta() != null) {
-            reciboEmpresaService.propagarRuta(quincenaId, nombre, recibo.getRuta());
+    public ResponseEntity<?> actualizar(@PathVariable Long id, @RequestBody ReciboEmpresa recibo) {
+        try {
+            return ResponseEntity.ok(reciboEmpresaService.actualizar(id, recibo));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
-        return ResponseEntity.ok(guardado);
     }
 
     @PostMapping("/quincena/{quincenaId}/heredar")

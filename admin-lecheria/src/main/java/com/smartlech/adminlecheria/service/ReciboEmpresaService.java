@@ -36,10 +36,11 @@ public class ReciboEmpresaService {
     }
 
     public ReciboEmpresa guardar(ReciboEmpresa recibo) {
-        // Validar que no exista ya un recibo para la misma empresa en el mismo día
-        if (recibo.getId() == null && recibo.getNombreRecibo() != null && recibo.getFecha() != null) {
+        // Validar que no exista ya un recibo para la misma empresa en el mismo día (al crear y al editar)
+        if (recibo.getNombreRecibo() != null && recibo.getFecha() != null) {
             List<ReciboEmpresa> existentes = reciboEmpresaRepository.findByQuincenaId(recibo.getQuincena().getId());
             boolean yaExiste = existentes.stream().anyMatch(r ->
+                !r.getId().equals(recibo.getId()) &&
                 r.getNombreRecibo() != null &&
                 r.getNombreRecibo().trim().equalsIgnoreCase(recibo.getNombreRecibo().trim()) &&
                 r.getFecha() != null &&
@@ -51,6 +52,45 @@ public class ReciboEmpresaService {
             }
         }
         return reciboEmpresaRepository.save(recibo);
+    }
+
+    public ReciboEmpresa actualizar(Long id, ReciboEmpresa datos) {
+        ReciboEmpresa existente = buscarPorId(id);
+        Long quincenaId = existente.getQuincena().getId();
+        String nombreNuevo = datos.getNombreRecibo() != null ? datos.getNombreRecibo().trim() : null;
+        if (nombreNuevo == null || nombreNuevo.isEmpty()) {
+            throw new RuntimeException("El nombre de la empresa es obligatorio.");
+        }
+
+        // Si se cambia el nombre por el de otra empresa que ya existe en la quincena, no se permite:
+        // propagarPrecio le cambiaría los precios a todos los días de esa otra empresa
+        boolean cambiaNombre = !nombreNuevo.equalsIgnoreCase(existente.getNombreRecibo().trim());
+        if (cambiaNombre) {
+            reciboEmpresaRepository.findByQuincenaId(quincenaId).stream()
+                .filter(r -> !r.getId().equals(id) && r.getNombreRecibo() != null
+                    && r.getNombreRecibo().trim().equalsIgnoreCase(nombreNuevo))
+                .findFirst()
+                .ifPresent(r -> {
+                    throw new RuntimeException("Ya existe la empresa '" + r.getNombreRecibo().trim() + "' en esta quincena. "
+                        + "Si este recibo es de esa empresa, elimínalo y créalo de nuevo con ese nombre.");
+                });
+        }
+
+        existente.setNombreRecibo(nombreNuevo);
+        existente.setLitrosRecibidos(datos.getLitrosRecibidos());
+        existente.setPrecioLitro(datos.getPrecioLitro());
+        existente.setPrecioTransporte(datos.getPrecioTransporte());
+        existente.setSoloTransporte(datos.getSoloTransporte());
+        existente.setFecha(datos.getFecha());
+        existente.setRuta(datos.getRuta());
+        ReciboEmpresa guardado = guardar(existente);
+
+        // Propagar precio y ruta a todos los días de la misma empresa en la quincena
+        propagarPrecio(quincenaId, nombreNuevo, datos.getPrecioLitro(), datos.getPrecioTransporte(), datos.getSoloTransporte());
+        if (datos.getRuta() != null) {
+            propagarRuta(quincenaId, nombreNuevo, datos.getRuta());
+        }
+        return guardado;
     }
 
     public ReciboEmpresa buscarPorId(Long id) {

@@ -60,7 +60,7 @@ cd admin-lecheria-frontend && npx vite build       # verificar build
 - `rutas`: GET, GET `/{id}`, POST, DELETE `/{id}`
 - `quincenas`: GET, GET `/abierta`, GET `/{id}`, POST (400 si las fechas se cruzan con otra quincena), PUT `/{id}/cerrar`, PUT `/{id}/reabrir`, DELETE `/{id}` (400 con el conteo si tiene datos del usuario; excedentes e ingresos vinculados de cuentas personalizadas, que se heredan solos, se borran con ella)
 - `recolecciones`: GET `/quincena/{qId}`, POST, PUT `/{id}` (litros, vale, conductor), DELETE `/{id}`, GET `/resumen/{qId}` (liquidación → `ResumenQuincenaDTO`), POST `/sincronizar`, GET `/pendientes`
-- `recibos`: GET `/quincena/{qId}`, GET `/{id:[0-9]+}`, GET `/empresas` (nombres distintos), GET `/transporte/{qId}` (`TransporteResumenDTO`), POST, PUT `/{id}` (propaga precios y ruta a todos los días de esa empresa en la quincena), POST `/quincena/{qId}/heredar`, DELETE `/{id}`
+- `recibos`: GET `/quincena/{qId}`, GET `/{id:[0-9]+}`, GET `/empresas` (nombres distintos), GET `/transporte/{qId}` (`TransporteResumenDTO`), POST, PUT `/{id}` (propaga precios y ruta a todos los días de esa empresa en la quincena; 400 si queda duplicado empresa + fecha o si se renombra a otra empresa ya existente en la quincena), POST `/quincena/{qId}/heredar`, DELETE `/{id}`
 - `descuentos`: GET `/quincena/{qId}`, POST, PUT `/{id}` (concepto, valor, fecha), DELETE `/{id}`
 - `excedentes`: GET `/quincena/{qId}`, POST `/quincena/{qId}/heredar` (solo copia proveedores sin registro), POST|DELETE `/quincena/{qId}/proveedor/{pId}` (body `{valorPorLitro}`). El frontend guarda 0 en vez de borrar, para que heredar no lo vuelva a copiar
 - `grupos-rinde`: GET, POST, PUT `/{id}`, DELETE `/{id}`, GET `/transporte/{qId}`, GET `/vista-completa/{qId}?rutaIds=1,2` (`TransporteCompletoDTO`, lo usan Transporte y Cuentas Generales)
@@ -101,23 +101,22 @@ Compartido: `components/Layout.jsx` (sidebar con selector global de rutas), `con
 ## Problemas conocidos (revisión 2026-10-12, ordenados por prioridad)
 
 ### 🔴 Alta — pueden dar valores de dinero equivocados o perder datos
-1. **Editar un recibo no valida duplicados**: `PUT /recibos/{id}` permite cambiar nombre/fecha sin revisar empresa + fecha → litros entregados contados doble. Si se renombra a otra empresa existente, `propagarPrecio` sobrescribe los precios de esa otra empresa en toda la quincena.
-2. **Sin autenticación y CORS `*`** con backend público en Render: cualquiera con la URL puede leer/modificar/borrar datos.
-3. **El backend no impide modificar quincenas cerradas** (recolecciones, recibos, descuentos…).
-4. **Fechas "hoy" con `toISOString()` (UTC)**: después de las 7 pm sale el día siguiente (Recolecciones, Recibos, Descuentos, Inicio) → registros con fecha equivocada.
+1. **Sin autenticación y CORS `*`** con backend público en Render: cualquiera con la URL puede leer/modificar/borrar datos.
+2. **El backend no impide modificar quincenas cerradas** (recolecciones, recibos, descuentos…).
+3. **Fechas "hoy" con `toISOString()` (UTC)**: después de las 7 pm sale el día siguiente (Recolecciones, Recibos, Descuentos, Inicio) → registros con fecha equivocada.
 
 ### 🟠 Media — fallos de funcionamiento o descuadres en casos concretos
-5. **Modo offline de Recolecciones**: sin internet las tarjetas salen "sin registrar" (no se cachean recolecciones ni se muestran las pendientes); al sincronizar, un 409 borra el pendiente sin avisar aunque los litros sean distintos. Editar sin internet falla (solo se encolan registros nuevos).
-6. **Dos quincenas abiertas** con fechas distintas (si no se cierra la anterior) → `/quincenas/abierta` da 500. Las fechas cruzadas ya se bloquean.
-7. **`vista-completa` con `rutaIds`**: excluye grupos con rutaIds vacío y recibos sin ruta; además un grupo con rutas 1,2 suma lo recogido de ambas aunque el filtro sea solo la 1 (los recibos sí se filtran) → rinde por ruta descuadrado.
-8. **Recolecciones duplicadas por concurrencia**: sin restricción única en BD (proveedor + fecha). El POST da 409 y el botón se bloquea, pero dos peticiones simultáneas aún podrían duplicar. `POST /recolecciones/sincronizar` no valida duplicados (hoy no lo usa el frontend).
-9. **Cuentas personalizadas re-heredan ingresos** si se dejan vacías.
+4. **Modo offline de Recolecciones**: sin internet las tarjetas salen "sin registrar" (no se cachean recolecciones ni se muestran las pendientes); al sincronizar, un 409 borra el pendiente sin avisar aunque los litros sean distintos. Editar sin internet falla (solo se encolan registros nuevos).
+5. **Dos quincenas abiertas** con fechas distintas (si no se cierra la anterior) → `/quincenas/abierta` da 500. Las fechas cruzadas ya se bloquean.
+6. **`vista-completa` con `rutaIds`**: excluye grupos con rutaIds vacío y recibos sin ruta; además un grupo con rutas 1,2 suma lo recogido de ambas aunque el filtro sea solo la 1 (los recibos sí se filtran) → rinde por ruta descuadrado.
+7. **Recolecciones duplicadas por concurrencia**: sin restricción única en BD (proveedor + fecha). El POST da 409 y el botón se bloquea, pero dos peticiones simultáneas aún podrían duplicar. `POST /recolecciones/sincronizar` no valida duplicados (hoy no lo usa el frontend).
+8. **Cuentas personalizadas re-heredan ingresos** si se dejan vacías.
 
 ### 🟡 Baja — detalles
-10. `ResumenQuincena.jsx` compara `tipoLeche === 'búfala'` (con tilde) → la etiqueta Búfala nunca aparece.
-11. `PUT /descuentos/{id}` con `valor` vacío → `NullPointerException` (500). La pantalla lo valida antes.
-12. ESLint tiene ~38 problemas previos (mayoría `react-hooks`); no bloquean el build.
-13. Solo existe el test `contextLoads()`.
+9. `ResumenQuincena.jsx` compara `tipoLeche === 'búfala'` (con tilde) → la etiqueta Búfala nunca aparece.
+10. `PUT /descuentos/{id}` con `valor` vacío → `NullPointerException` (500). La pantalla lo valida antes.
+11. ESLint tiene ~38 problemas previos (mayoría `react-hooks`); no bloquean el build.
+12. Solo existe el test `contextLoads()`.
 
 ## Tip IDE
 
