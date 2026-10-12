@@ -10,4 +10,5 @@ public interface IngresoCuentaRepository extends JpaRepository<IngresoCuenta, Lo
     void deleteByCuentaIdAndQuincenaIdAndNombreRecibo(Long cuentaId, Long quincenaId, String nombreRecibo);
     void deleteByCuentaId(Long cuentaId);
     long countByQuincenaId(Long quincenaId);
+    void deleteByQuincenaId(Long quincenaId);
 }

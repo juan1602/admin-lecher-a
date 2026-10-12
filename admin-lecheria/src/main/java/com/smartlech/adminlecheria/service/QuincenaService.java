@@ -4,6 +4,7 @@ import com.smartlech.adminlecheria.entity.Quincena;
 import com.smartlech.adminlecheria.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -73,24 +74,27 @@ public class QuincenaService {
         return quincenaRepository.save(quincena);
     }
 
-    // Solo se elimina si la quincena está vacía, para no perder información por error
+    // Solo se elimina si la quincena no tiene datos registrados por el usuario, para no perder información por error.
+    // Excedentes e ingresos vinculados de cuentas personalizadas se copian solos al abrir Resumen / Cuentas
+    // personalizadas (heredar), así que se borran junto con la quincena.
+    @Transactional
     public void eliminar(Long id) {
         buscarPorId(id);
         List<String> registros = new ArrayList<>();
         agregarSiHay(registros, recoleccionRepository.countByQuincenaId(id), "recolecciones");
         agregarSiHay(registros, reciboEmpresaRepository.countByQuincenaId(id), "recibos de empresa");
         agregarSiHay(registros, descuentoRepository.countByQuincenaId(id), "descuentos de proveedores");
-        agregarSiHay(registros, excedenteRepository.countByQuincenaId(id), "excedentes");
         agregarSiHay(registros, descuentoCuentaRepository.countByQuincenaId(id), "descuentos de cuentas generales");
         agregarSiHay(registros, combustibleRepository.countByQuincenaId(id), "combustibles");
-        agregarSiHay(registros, ingresoCuentaRepository.countByQuincenaId(id)
-            + ingresoManualCuentaRepository.countByQuincenaId(id), "ingresos de cuentas personalizadas");
+        agregarSiHay(registros, ingresoManualCuentaRepository.countByQuincenaId(id), "ingresos manuales de cuentas personalizadas");
         agregarSiHay(registros, descuentoCuentaPersonalRepository.countByQuincenaId(id), "descuentos de cuentas personalizadas");
 
         if (!registros.isEmpty()) {
             throw new RuntimeException("No se puede eliminar: la quincena tiene "
                 + String.join(", ", registros) + ". Elimina esos registros primero.");
         }
+        excedenteRepository.deleteByQuincenaId(id);
+        ingresoCuentaRepository.deleteByQuincenaId(id);
         quincenaRepository.deleteById(id);
     }
 

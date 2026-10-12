@@ -9,4 +9,5 @@ public interface ExcedenteProveedorRepository extends JpaRepository<ExcedentePro
     List<ExcedenteProveedor> findByQuincenaId(Long quincenaId);
     Optional<ExcedenteProveedor> findByQuincenaIdAndProveedorId(Long quincenaId, Long proveedorId);
     long countByQuincenaId(Long quincenaId);
+    void deleteByQuincenaId(Long quincenaId);
 }

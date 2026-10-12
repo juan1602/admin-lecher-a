@@ -58,7 +58,7 @@ cd admin-lecheria-frontend && npx vite build       # verificar build
 - `proveedores`: GET `/` (activos), `/todos`, `/{id}`; POST; PUT `/{id}`; PATCH `/{id}/toggle-activo`
 - `conductores`: GET `/`, `/todos`, `/{id}`; POST; PUT `/{id}`; DELETE `/{id}` (desactiva)
 - `rutas`: GET, GET `/{id}`, POST, DELETE `/{id}`
-- `quincenas`: GET, GET `/abierta`, GET `/{id}`, POST (400 si las fechas se cruzan con otra quincena), PUT `/{id}/cerrar`, PUT `/{id}/reabrir`, DELETE `/{id}` (solo si está vacía; si no, 400 con el conteo de registros)
+- `quincenas`: GET, GET `/abierta`, GET `/{id}`, POST (400 si las fechas se cruzan con otra quincena), PUT `/{id}/cerrar`, PUT `/{id}/reabrir`, DELETE `/{id}` (400 con el conteo si tiene datos del usuario; excedentes e ingresos vinculados de cuentas personalizadas, que se heredan solos, se borran con ella)
 - `recolecciones`: GET `/quincena/{qId}`, POST, PUT `/{id}` (litros, vale, conductor), DELETE `/{id}`, GET `/resumen/{qId}` (liquidación → `ResumenQuincenaDTO`), POST `/sincronizar`, GET `/pendientes`
 - `recibos`: GET `/quincena/{qId}`, GET `/{id:[0-9]+}`, GET `/empresas` (nombres distintos), GET `/transporte/{qId}` (`TransporteResumenDTO`), POST, PUT `/{id}` (propaga precios y ruta a todos los días de esa empresa en la quincena), POST `/quincena/{qId}/heredar`, DELETE `/{id}`
 - `descuentos`: GET `/quincena/{qId}`, POST, PUT `/{id}` (concepto, valor, fecha), DELETE `/{id}`
