@@ -63,14 +63,16 @@ function ResumenQuincena() {
 
   const handleExcedenteBlur = async (proveedorId, valor) => {
     const v = parseFloat(valor) || 0
+    // Si no cambió, no guardar (evita registrar ceros solo por pasar el cursor por la casilla)
+    if (v === (excedentes[proveedorId] || 0)) return
     try {
-      if (v > 0) {
-        await api.post(`/excedentes/quincena/${quincenaId}/proveedor/${proveedorId}`, { valorPorLitro: v })
-      } else {
-        await api.delete(`/excedentes/quincena/${quincenaId}/proveedor/${proveedorId}`)
-      }
+      // Se guarda también el 0 (en vez de borrar) para que "heredar" no vuelva a copiar
+      // el excedente de la quincena anterior a este proveedor
+      await api.post(`/excedentes/quincena/${quincenaId}/proveedor/${proveedorId}`, { valorPorLitro: v })
       cargarExcedentes(quincenaId)
-    } catch {}
+    } catch {
+      alert('No se pudo guardar el excedente.')
+    }
   }
 
   const handleQuincenaChange = (e) => {
