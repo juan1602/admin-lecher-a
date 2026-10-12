@@ -8,4 +8,5 @@ import java.util.Optional;
 public interface ExcedenteProveedorRepository extends JpaRepository<ExcedenteProveedor, Long> {
     List<ExcedenteProveedor> findByQuincenaId(Long quincenaId);
     Optional<ExcedenteProveedor> findByQuincenaIdAndProveedorId(Long quincenaId, Long proveedorId);
+    long countByQuincenaId(Long quincenaId);
 }

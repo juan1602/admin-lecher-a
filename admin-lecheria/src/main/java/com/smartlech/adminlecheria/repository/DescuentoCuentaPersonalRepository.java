@@ -7,4 +7,5 @@ import java.util.List;
 public interface DescuentoCuentaPersonalRepository extends JpaRepository<DescuentoCuentaPersonal, Long> {
     List<DescuentoCuentaPersonal> findByCuentaIdAndQuincenaId(Long cuentaId, Long quincenaId);
     void deleteByCuentaId(Long cuentaId);
+    long countByQuincenaId(Long quincenaId);
 }

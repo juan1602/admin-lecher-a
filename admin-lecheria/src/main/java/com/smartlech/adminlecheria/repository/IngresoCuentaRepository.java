@@ -9,4 +9,5 @@ public interface IngresoCuentaRepository extends JpaRepository<IngresoCuenta, Lo
     boolean existsByCuentaIdAndQuincenaIdAndNombreRecibo(Long cuentaId, Long quincenaId, String nombreRecibo);
     void deleteByCuentaIdAndQuincenaIdAndNombreRecibo(Long cuentaId, Long quincenaId, String nombreRecibo);
     void deleteByCuentaId(Long cuentaId);
+    long countByQuincenaId(Long quincenaId);
 }

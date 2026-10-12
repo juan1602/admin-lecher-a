@@ -5,6 +5,7 @@ function Quincenas() {
   const [quincenas, setQuincenas] = useState([])
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [form, setForm] = useState({ fechaInicio: '', fechaFin: '', textoQuincena: '' })
+  const [guardando, setGuardando] = useState(false)
 
   useEffect(() => { cargarQuincenas() }, [])
 
@@ -17,10 +18,30 @@ function Quincenas() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    await api.post('/quincenas', form)
-    setForm({ fechaInicio: '', fechaFin: '', textoQuincena: '' })
-    setMostrarFormulario(false)
-    cargarQuincenas()
+    // Evita que un doble clic cree dos quincenas
+    if (guardando) return
+    setGuardando(true)
+    try {
+      await api.post('/quincenas', form)
+      setForm({ fechaInicio: '', fechaFin: '', textoQuincena: '' })
+      setMostrarFormulario(false)
+      cargarQuincenas()
+    } catch (e) {
+      alert(typeof e.response?.data === 'string' ? e.response.data : 'No se pudo guardar la quincena.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const eliminar = async (q) => {
+    if (confirm(`¿Eliminar la quincena "${q.textoQuincena || `${q.fechaInicio} a ${q.fechaFin}`}"?\n\nSolo se puede eliminar si no tiene registros.`)) {
+      try {
+        await api.delete(`/quincenas/${q.id}`)
+        cargarQuincenas()
+      } catch (e) {
+        alert(typeof e.response?.data === 'string' ? e.response.data : 'No se pudo eliminar la quincena.')
+      }
+    }
   }
 
   const cerrar = async (id) => {
@@ -72,9 +93,9 @@ function Quincenas() {
                   style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd', boxSizing: 'border-box' }} />
               </div>
             </div>
-            <button type="submit"
-              style={{ marginTop: '16px', background: '#6c63ff', color: 'white', border: 'none', padding: '10px 24px', borderRadius: '8px', cursor: 'pointer' }}>
-              Guardar
+            <button type="submit" disabled={guardando}
+              style={{ marginTop: '16px', background: '#6c63ff', color: 'white', border: 'none', padding: '10px 24px', borderRadius: '8px', cursor: guardando ? 'not-allowed' : 'pointer', opacity: guardando ? 0.6 : 1 }}>
+              {guardando ? 'Guardando...' : 'Guardar'}
             </button>
           </form>
         </div>
@@ -119,6 +140,10 @@ function Quincenas() {
                       Reabrir
                     </button>
                   )}
+                  <button onClick={() => eliminar(q)}
+                    style={{ background: '#ffebee', color: '#c62828', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                    Eliminar
+                  </button>
                 </td>
               </tr>
             ))}

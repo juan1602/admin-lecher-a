@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface CombustibleRepository extends JpaRepository<Combustible, Long> {
     List<Combustible> findByQuincenaIdAndRutaContexto(Long quincenaId, String rutaContexto);
+    long countByQuincenaId(Long quincenaId);
 }

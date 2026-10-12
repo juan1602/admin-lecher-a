@@ -7,4 +7,5 @@ import java.util.List;
 public interface IngresoManualCuentaRepository extends JpaRepository<IngresoManualCuenta, Long> {
     List<IngresoManualCuenta> findByCuentaIdAndQuincenaId(Long cuentaId, Long quincenaId);
     void deleteByCuentaId(Long cuentaId);
+    long countByQuincenaId(Long quincenaId);
 }

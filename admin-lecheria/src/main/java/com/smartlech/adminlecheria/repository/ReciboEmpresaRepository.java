@@ -12,4 +12,5 @@ public interface ReciboEmpresaRepository extends JpaRepository<ReciboEmpresa, Lo
 
     @Query("SELECT DISTINCT r.nombreRecibo FROM ReciboEmpresa r WHERE r.nombreRecibo IS NOT NULL ORDER BY r.nombreRecibo")
     List<String> findNombresDistintos();
+    long countByQuincenaId(Long quincenaId);
 }

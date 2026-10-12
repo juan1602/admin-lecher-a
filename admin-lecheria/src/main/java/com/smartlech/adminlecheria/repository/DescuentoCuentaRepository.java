@@ -7,4 +7,5 @@ import java.util.List;
 public interface DescuentoCuentaRepository extends JpaRepository<DescuentoCuenta, Long> {
     List<DescuentoCuenta> findByQuincenaIdAndRutaContexto(Long quincenaId, String rutaContexto);
     boolean existsByQuincenaIdAndTipoAndNombreAndRutaContexto(Long quincenaId, String tipo, String nombre, String rutaContexto);
+    long countByQuincenaId(Long quincenaId);
 }

@@ -10,4 +10,5 @@ public interface RecoleccionRepository extends JpaRepository<Recoleccion, Long> 
     List<Recoleccion> findByQuincenaId(Long quincenaId);
     List<Recoleccion> findByProveedorIdAndQuincenaId(Long proveedorId, Long quincenaId);
     List<Recoleccion> findBySincronizadoFalse();
+    long countByQuincenaId(Long quincenaId);
 }

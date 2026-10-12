@@ -31,8 +31,22 @@ public class QuincenaController {
     }
 
     @PostMapping
-    public ResponseEntity<Quincena> crear(@RequestBody Quincena quincena) {
-        return ResponseEntity.ok(quincenaService.guardar(quincena));
+    public ResponseEntity<?> crear(@RequestBody Quincena quincena) {
+        try {
+            return ResponseEntity.ok(quincenaService.guardar(quincena));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> eliminar(@PathVariable Long id) {
+        try {
+            quincenaService.eliminar(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PutMapping("/{id}/cerrar")

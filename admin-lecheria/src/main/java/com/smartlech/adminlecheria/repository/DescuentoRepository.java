@@ -9,4 +9,5 @@ import java.util.List;
 public interface DescuentoRepository extends JpaRepository<Descuento, Long> {
     List<Descuento> findByQuincenaId(Long quincenaId);
     List<Descuento> findByProveedorIdAndQuincenaId(Long proveedorId, Long quincenaId);
+    long countByQuincenaId(Long quincenaId);
 }
