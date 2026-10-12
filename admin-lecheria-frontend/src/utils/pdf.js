@@ -6,7 +6,7 @@ const fmtL = v => Number(v ?? 0).toLocaleString('es-CO', { minimumFractionDigits
 
 function encabezado(doc, titulo, subtitulo) {
   doc.setFillColor(26, 26, 46)
-  doc.rect(0, 0, 210, 22, 'F')
+  doc.rect(0, 0, doc.internal.pageSize.getWidth(), 22, 'F')
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(13)
   doc.setFont('helvetica', 'bold')
@@ -32,7 +32,7 @@ function seccionTitulo(doc, y, texto, color) {
 }
 
 // ── Cuentas Personalizadas ────────────────────────────────────────────────────
-export function pdfCuentaPersonalizada({ cuentaNombre, quincenaTexto, ingresos, ingresosManual = [], descuentos }) {
+export function pdfCuentaPersonalizada({ cuentaNombre, quincenaTexto, ingresos, ingresosManual = [], descuentos, dias = [] }) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
   let y = encabezado(doc, 'CUENTAS PERSONALIZADAS', `${cuentaNombre}  ·  ${quincenaTexto || ''}`)
@@ -89,6 +89,34 @@ export function pdfCuentaPersonalizada({ cuentaNombre, quincenaTexto, ingresos, 
   doc.setTextColor(...saldoColor)
   doc.setFontSize(13)
   doc.text('$ ' + fmt(saldoFinal), 195, y + 9, { align: 'right' })
+
+  // Litros diarios de cada ingreso (recibo vinculado), en página horizontal
+  if (dias.length > 0 && ingresos.length > 0) {
+    doc.addPage('a4', 'landscape')
+    const yDias = encabezado(doc, 'LITROS DIARIOS', `${cuentaNombre}  ·  ${quincenaTexto || ''}`)
+    const litrosDia = (g, fecha) => (g.recibos || [])
+      .filter(r => r.fecha === fecha)
+      .reduce((s, r) => s + (r.litrosRecibidos || 0), 0)
+    const celda = v => v > 0 ? fmtL(v) : '—'
+    const totalesDia = dias.map(f => ingresos.reduce((s, g) => s + litrosDia(g, f), 0))
+
+    autoTable(doc, {
+      startY: yDias,
+      head: [['Proveedor', ...dias.map(f => String(Number(f.slice(8)))), 'Total']],
+      body: [
+        ...ingresos.map(g => [g.nombre, ...dias.map(f => celda(litrosDia(g, f))), fmtL(g.litros)]),
+        [
+          { content: 'TOTAL', styles: { fontStyle: 'bold' } },
+          ...totalesDia.map(t => ({ content: celda(t), styles: { fontStyle: 'bold' } })),
+          { content: fmtL(ingresos.reduce((s, g) => s + g.litros, 0)), styles: { fontStyle: 'bold' } },
+        ],
+      ],
+      styles: { fontSize: 7.5, cellPadding: 1.5, halign: 'right' },
+      headStyles: { fillColor: [26, 26, 46], textColor: 255, fontStyle: 'bold', halign: 'center' },
+      columnStyles: { 0: { halign: 'left', cellWidth: 42 }, [dias.length + 1]: { fontStyle: 'bold' } },
+      margin: { left: 10, right: 10 },
+    })
+  }
 
   doc.save(`cuenta-${cuentaNombre.replace(/\s+/g, '-').toLowerCase()}.pdf`)
 }

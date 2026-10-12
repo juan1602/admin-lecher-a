@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import { pdfCuentaPersonalizada } from '../../utils/pdf'
+import { fechaLocal } from '../../utils/fecha'
 
 const fmt = v => Math.round(v ?? 0).toLocaleString('es-CO')
 
@@ -13,6 +14,17 @@ function valorRecibo(r) {
 // Precio por litro con el que se calcula el valor del recibo
 function precioRecibo(r) {
   return r.soloTransporte ? (r.precioTransporte || 0) : (r.precioLitro || 0)
+}
+
+// Fechas 'YYYY-MM-DD' de todos los días de la quincena (para el PDF de litros diarios)
+function diasDeQuincena(q) {
+  if (!q?.fechaInicio || !q?.fechaFin) return []
+  const dias = []
+  const fin = new Date(q.fechaFin + 'T12:00:00')
+  for (let d = new Date(q.fechaInicio + 'T12:00:00'); d <= fin; d.setDate(d.getDate() + 1)) {
+    dias.push(fechaLocal(d))
+  }
+  return dias
 }
 
 // Texto de precio(s) de una empresa: "$250/L"; si hubo días con precios distintos, "$250 / $260 /L"
@@ -317,13 +329,17 @@ export default function CuentasPersonalizadas() {
         </button>
         <h2 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#1a1a2e', flex: 1 }}>{cuentaActiva.nombre}</h2>
         <button
-          onClick={() => pdfCuentaPersonalizada({
-            cuentaNombre: cuentaActiva.nombre,
-            quincenaTexto: quincenas.find(q => String(q.id) === quincenaId)?.textoQuincena || '',
-            ingresos: ingresosSeleccionados.map(g => ({ ...g, precioTexto: textoPrecios(g) })),
-            ingresosManual,
-            descuentos,
-          })}
+          onClick={() => {
+            const q = quincenas.find(q => String(q.id) === quincenaId)
+            pdfCuentaPersonalizada({
+              cuentaNombre: cuentaActiva.nombre,
+              quincenaTexto: q?.textoQuincena || '',
+              ingresos: ingresosSeleccionados.map(g => ({ ...g, precioTexto: textoPrecios(g) })),
+              ingresosManual,
+              descuentos,
+              dias: diasDeQuincena(q),
+            })
+          }}
           style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}
         >
           PDF
