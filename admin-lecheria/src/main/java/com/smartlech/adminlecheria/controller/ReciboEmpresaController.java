@@ -2,6 +2,7 @@ package com.smartlech.adminlecheria.controller;
 
 import com.smartlech.adminlecheria.dto.TransporteResumenDTO;
 import com.smartlech.adminlecheria.entity.ReciboEmpresa;
+import com.smartlech.adminlecheria.exception.QuincenaCerradaException;
 import com.smartlech.adminlecheria.service.ReciboEmpresaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +41,8 @@ public class ReciboEmpresaController {
     public ResponseEntity<?> crear(@RequestBody ReciboEmpresa recibo) {
         try {
             return ResponseEntity.ok(reciboEmpresaService.guardar(recibo));
+        } catch (QuincenaCerradaException e) {
+            throw e; // → 423 (ManejadorErrores)
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -49,6 +52,8 @@ public class ReciboEmpresaController {
     public ResponseEntity<?> actualizar(@PathVariable Long id, @RequestBody ReciboEmpresa recibo) {
         try {
             return ResponseEntity.ok(reciboEmpresaService.actualizar(id, recibo));
+        } catch (QuincenaCerradaException e) {
+            throw e; // → 423 (ManejadorErrores)
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

@@ -67,8 +67,8 @@ function Descuentos() {
       })
       setForm(formVacio())
       cargarDescuentos(quincenaAbierta.id)
-    } catch {
-      alert('Error al guardar el descuento')
+    } catch (e) {
+      if (!e.yaAvisado) alert('Error al guardar el descuento')
     } finally {
       setGuardando(false)
     }
@@ -91,8 +91,8 @@ function Descuentos() {
       })
       setEditando(null)
       cargarDescuentos(quincenaAbierta.id)
-    } catch {
-      alert('Error al actualizar el descuento')
+    } catch (e) {
+      if (!e.yaAvisado) alert('Error al actualizar el descuento')
     }
   }
 

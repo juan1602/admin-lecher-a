@@ -30,12 +30,14 @@ public class ReciboEmpresaService {
     private final ReciboEmpresaRepository reciboEmpresaRepository;
     private final RecoleccionRepository recoleccionRepository;
     private final QuincenaRepository quincenaRepository;
+    private final QuincenaGuard quincenaGuard;
 
     public List<ReciboEmpresa> listarPorQuincena(Long quincenaId) {
         return reciboEmpresaRepository.findByQuincenaId(quincenaId);
     }
 
     public ReciboEmpresa guardar(ReciboEmpresa recibo) {
+        quincenaGuard.validarAbierta(recibo.getQuincena());
         // Validar que no exista ya un recibo para la misma empresa en el mismo día (al crear y al editar)
         if (recibo.getNombreRecibo() != null && recibo.getFecha() != null) {
             List<ReciboEmpresa> existentes = reciboEmpresaRepository.findByQuincenaId(recibo.getQuincena().getId());
@@ -57,6 +59,7 @@ public class ReciboEmpresaService {
     public ReciboEmpresa actualizar(Long id, ReciboEmpresa datos) {
         ReciboEmpresa existente = buscarPorId(id);
         Long quincenaId = existente.getQuincena().getId();
+        quincenaGuard.validarAbierta(quincenaId);
         String nombreNuevo = datos.getNombreRecibo() != null ? datos.getNombreRecibo().trim() : null;
         if (nombreNuevo == null || nombreNuevo.isEmpty()) {
             throw new RuntimeException("El nombre de la empresa es obligatorio.");
@@ -99,6 +102,7 @@ public class ReciboEmpresaService {
     }
 
     public void eliminar(Long id) {
+        reciboEmpresaRepository.findById(id).ifPresent(r -> quincenaGuard.validarAbierta(r.getQuincena()));
         reciboEmpresaRepository.deleteById(id);
     }
 
@@ -134,6 +138,7 @@ public class ReciboEmpresaService {
     public List<ReciboEmpresa> heredarDeQuincenaAnterior(Long quincenaId) {
         Quincena quincena = quincenaRepository.findById(quincenaId)
                 .orElseThrow(() -> new RuntimeException("Quincena no encontrada"));
+        quincenaGuard.validarAbierta(quincenaId);
 
         Quincena anterior = quincenaRepository.findAll().stream()
                 .filter(q -> !q.getId().equals(quincenaId) &&

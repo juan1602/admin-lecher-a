@@ -18,6 +18,7 @@ public class CuentaPersonalizadaService {
     private final IngresoManualCuentaRepository ingresoManualRepository;
     private final DescuentoCuentaPersonalRepository descuentoRepository;
     private final QuincenaRepository quincenaRepository;
+    private final QuincenaGuard quincenaGuard;
 
     public List<CuentaPersonalizada> listarTodas() {
         return cuentaRepository.findAll();
@@ -43,6 +44,7 @@ public class CuentaPersonalizadaService {
 
     @Transactional
     public void agregarIngreso(Long cuentaId, Long quincenaId, String nombreRecibo) {
+        quincenaGuard.validarAbierta(quincenaId);
         if (ingresoRepository.existsByCuentaIdAndQuincenaIdAndNombreRecibo(cuentaId, quincenaId, nombreRecibo)) return;
         CuentaPersonalizada cuenta = cuentaRepository.findById(cuentaId)
             .orElseThrow(() -> new RuntimeException("Cuenta no encontrada: " + cuentaId));
@@ -57,6 +59,7 @@ public class CuentaPersonalizadaService {
 
     @Transactional
     public void quitarIngreso(Long cuentaId, Long quincenaId, String nombreRecibo) {
+        quincenaGuard.validarAbierta(quincenaId);
         ingresoRepository.deleteByCuentaIdAndQuincenaIdAndNombreRecibo(cuentaId, quincenaId, nombreRecibo);
     }
 
@@ -67,6 +70,7 @@ public class CuentaPersonalizadaService {
     }
 
     public DescuentoCuentaPersonal agregarDescuento(Long cuentaId, Long quincenaId, DescuentoCuentaPersonal d) {
+        quincenaGuard.validarAbierta(quincenaId);
         CuentaPersonalizada cuenta = cuentaRepository.findById(cuentaId)
             .orElseThrow(() -> new RuntimeException("Cuenta no encontrada: " + cuentaId));
         Quincena quincena = quincenaRepository.findById(quincenaId)
@@ -77,6 +81,7 @@ public class CuentaPersonalizadaService {
     }
 
     public void eliminarDescuento(Long id) {
+        descuentoRepository.findById(id).ifPresent(d -> quincenaGuard.validarAbierta(d.getQuincena()));
         descuentoRepository.deleteById(id);
     }
 
@@ -87,6 +92,7 @@ public class CuentaPersonalizadaService {
     }
 
     public IngresoManualCuenta agregarIngresoManual(Long cuentaId, Long quincenaId, String descripcion, Double valor) {
+        quincenaGuard.validarAbierta(quincenaId);
         CuentaPersonalizada cuenta = cuentaRepository.findById(cuentaId)
             .orElseThrow(() -> new RuntimeException("Cuenta no encontrada: " + cuentaId));
         Quincena quincena = quincenaRepository.findById(quincenaId)
@@ -102,12 +108,14 @@ public class CuentaPersonalizadaService {
     public IngresoManualCuenta actualizarIngresoManual(Long id, String descripcion, Double valor) {
         IngresoManualCuenta m = ingresoManualRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Ingreso manual no encontrado: " + id));
+        quincenaGuard.validarAbierta(m.getQuincena());
         m.setDescripcion(descripcion);
         m.setValor(valor);
         return ingresoManualRepository.save(m);
     }
 
     public void eliminarIngresoManual(Long id) {
+        ingresoManualRepository.findById(id).ifPresent(m -> quincenaGuard.validarAbierta(m.getQuincena()));
         ingresoManualRepository.deleteById(id);
     }
 
@@ -116,6 +124,7 @@ public class CuentaPersonalizadaService {
         // Si ya hay ingresos en esta quincena, no hacer nada
         List<IngresoCuenta> existentes = ingresoRepository.findByCuentaIdAndQuincenaId(cuentaId, quincenaId);
         if (!existentes.isEmpty()) return existentes;
+        if (quincenaGuard.estaCerrada(quincenaId)) return new ArrayList<>();
 
         Quincena quincena = quincenaRepository.findById(quincenaId)
                 .orElseThrow(() -> new RuntimeException("Quincena no encontrada: " + quincenaId));

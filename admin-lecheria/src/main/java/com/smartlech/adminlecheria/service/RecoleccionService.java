@@ -30,6 +30,7 @@ public class RecoleccionService {
     private final RecoleccionRepository recoleccionRepository;
     private final DescuentoRepository descuentoRepository;
     private final QuincenaRepository quincenaRepository;
+    private final QuincenaGuard quincenaGuard;
 
     public List<Recoleccion> listarPorQuincena(Long quincenaId) {
         return recoleccionRepository.findByQuincenaId(quincenaId);
@@ -44,6 +45,7 @@ public class RecoleccionService {
     }
 
     public Recoleccion guardar(Recoleccion recoleccion) {
+        quincenaGuard.validarAbierta(recoleccion.getQuincena());
         if (recoleccion.getId() == null) {
             boolean yaExiste = recoleccionRepository
                 .findByProveedorIdAndQuincenaId(
@@ -65,6 +67,7 @@ public class RecoleccionService {
     }
 
     public List<Recoleccion> sincronizar(List<Recoleccion> recolecciones) {
+        recolecciones.forEach(r -> quincenaGuard.validarAbierta(r.getQuincena()));
         recolecciones.forEach(r -> {
             r.setSincronizado(true);
             if (r.getFechaRegistro() == null) {

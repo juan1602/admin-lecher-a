@@ -12,6 +12,7 @@ import java.util.List;
 public class DescuentoService {
 
     private final DescuentoRepository descuentoRepository;
+    private final QuincenaGuard quincenaGuard;
 
     public List<Descuento> listarPorQuincena(Long quincenaId) {
         return descuentoRepository.findByQuincenaId(quincenaId);
@@ -22,12 +23,14 @@ public class DescuentoService {
     }
 
     public Descuento guardar(Descuento descuento) {
+        quincenaGuard.validarAbierta(descuento.getQuincena());
         return descuentoRepository.save(descuento);
     }
 
     public Descuento actualizar(Long id, String concepto, Double valor, LocalDate fecha) {
         Descuento d = descuentoRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Descuento no encontrado: " + id));
+        quincenaGuard.validarAbierta(d.getQuincena());
         d.setConcepto(concepto);
         d.setValor(valor);
         d.setFecha(fecha);
@@ -35,6 +38,7 @@ public class DescuentoService {
     }
 
     public void eliminar(Long id) {
+        descuentoRepository.findById(id).ifPresent(d -> quincenaGuard.validarAbierta(d.getQuincena()));
         descuentoRepository.deleteById(id);
     }
 }

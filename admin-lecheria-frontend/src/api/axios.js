@@ -22,6 +22,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
       cerrarSesion();
     }
+    // 423 = quincena cerrada: se avisa aquí una sola vez para todas las pantallas
+    if (error.response?.status === 423) {
+      const msg = error.response.data;
+      alert(typeof msg === 'string' ? msg : 'La quincena está cerrada. Reábrela en Quincenas para hacer cambios.');
+      error.yaAvisado = true;
+    }
     return Promise.reject(error);
   }
 );

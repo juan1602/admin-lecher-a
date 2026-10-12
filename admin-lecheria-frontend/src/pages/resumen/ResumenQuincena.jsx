@@ -70,8 +70,8 @@ function ResumenQuincena() {
       // el excedente de la quincena anterior a este proveedor
       await api.post(`/excedentes/quincena/${quincenaId}/proveedor/${proveedorId}`, { valorPorLitro: v })
       cargarExcedentes(quincenaId)
-    } catch {
-      alert('No se pudo guardar el excedente.')
+    } catch (e) {
+      if (!e.yaAvisado) alert('No se pudo guardar el excedente.')
     }
   }
 

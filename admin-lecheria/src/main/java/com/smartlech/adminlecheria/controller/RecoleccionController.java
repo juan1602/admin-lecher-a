@@ -2,6 +2,7 @@ package com.smartlech.adminlecheria.controller;
 
 import com.smartlech.adminlecheria.dto.ResumenQuincenaDTO;
 import com.smartlech.adminlecheria.entity.Recoleccion;
+import com.smartlech.adminlecheria.service.QuincenaGuard;
 import com.smartlech.adminlecheria.service.RecoleccionService;
 import com.smartlech.adminlecheria.repository.RecoleccionRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ public class RecoleccionController {
 
     private final RecoleccionService recoleccionService;
     private final RecoleccionRepository recoleccionRepository;
+    private final QuincenaGuard quincenaGuard;
 
     @GetMapping("/quincena/{quincenaId}")
     public List<Recoleccion> listarPorQuincena(@PathVariable Long quincenaId) {
@@ -28,6 +30,7 @@ public class RecoleccionController {
     public ResponseEntity<Recoleccion> actualizar(@PathVariable Long id, @RequestBody Recoleccion recoleccion) {
         Recoleccion existente = recoleccionRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Recolección no encontrada"));
+        quincenaGuard.validarAbierta(existente.getQuincena());
         existente.setLitrosRecolectados(recoleccion.getLitrosRecolectados());
         existente.setVale(recoleccion.getVale());
         existente.setConductor(recoleccion.getConductor());
@@ -61,6 +64,7 @@ public class RecoleccionController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        recoleccionRepository.findById(id).ifPresent(r -> quincenaGuard.validarAbierta(r.getQuincena()));
         recoleccionRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }

@@ -31,7 +31,7 @@ Variables backend: `APP_PASSWORD` (contraseña de la app; sin ella nadie entra) 
 
 ## Convenciones de código
 
-- **Backend:** paquete `com.smartlech.adminlecheria` → `entity/`, `repository/`, `service/`, `controller/`, `dto/`, `config/`. Controladores con `@RestController @RequestMapping("/api/...") @CrossOrigin(origins="*")` (el CORS real lo limita `config/CorsConfig`). Errores con `throw new RuntimeException("mensaje")` (no hay `@ControllerAdvice`; salen como 500). Para PUT parciales se usa `@RequestBody Map<String,Object>` y `((Number) body.get("valor")).doubleValue()`.
+- **Backend:** paquete `com.smartlech.adminlecheria` → `entity/`, `repository/`, `service/`, `controller/`, `dto/`, `config/`. Controladores con `@RestController @RequestMapping("/api/...") @CrossOrigin(origins="*")` (el CORS real lo limita `config/CorsConfig`). Errores con `throw new RuntimeException("mensaje")` (salen como 500 salvo que el controlador los capture). Único `@RestControllerAdvice`: `config/ManejadorErrores` para `QuincenaCerradaException` → 423. Para PUT parciales se usa `@RequestBody Map<String,Object>` y `((Number) body.get("valor")).doubleValue()`.
 - **"Heredar de quincena anterior"**: patrón repetido en varios servicios — busca la quincena con mayor `fechaFin` anterior a `fechaInicio` de la actual y copia registros que aún no existan.
 - **Frontend:** una carpeta por página en `src/pages/`, componentes con `useState`/`useEffect` y llamadas directas `api.get/post/put/delete` (`src/api/axios.js`). **Todos los estilos son inline** (`style={{...}}`), sin CSS modules ni librería UI. Colores: primario `#6c63ff`, oscuro `#1a1a2e`, rojo descuentos `#c62828`. Confirmaciones con `confirm()`, errores con `alert()`.
 - Edición en línea (fila que se vuelve inputs, Enter guarda / Escape cancela) es el patrón usado en Descuentos, Cuentas Generales e ingresos manuales.
@@ -103,24 +103,25 @@ Compartido: `components/Layout.jsx` (sidebar con selector global de rutas), `con
 6. Rinde (litros) = entregado (recibos de las empresas del grupo, sin soloTransporte) − recogido (recolecciones de las rutas/tipo de leche del grupo). Rinde ($) = rinde litros × precioRinde del grupo.
 7. Cuentas Generales: total = (transporte − combustibles − descuentos TRANSPORTE) + (rinde $ − excedentes − descuentos RINDE).
 8. Proveedores y conductores no se borran: `activo = false`.
+9. **Quincena cerrada = solo lectura**: `service/QuincenaGuard.validarAbierta()` se llama al crear/editar/borrar recolecciones, recibos, descuentos, excedentes, combustibles, descuentos de cuenta y todo lo de cuentas personalizadas → `QuincenaCerradaException` → 423 (`config/ManejadorErrores`). El interceptor de axios muestra el mensaje con `alert()` y marca `error.yaAvisado`. Los "heredar" automáticos (excedentes, ingresos de cuentas) no hacen nada en quincenas cerradas. Para corregir: Reabrir → corregir → Cerrar. Al agregar endpoints que modifiquen datos de una quincena, llamar al guard.
 
 ## Problemas conocidos (revisión 2026-10-12, ordenados por prioridad)
 
 ### 🔴 Alta — pueden dar valores de dinero equivocados o perder datos
-1. **El backend no impide modificar quincenas cerradas** (recolecciones, recibos, descuentos…).
+_(ninguno pendiente)_
 
 ### 🟠 Media — fallos de funcionamiento o descuadres en casos concretos
-2. **Modo offline de Recolecciones**: sin internet las tarjetas salen "sin registrar" (no se cachean recolecciones ni se muestran las pendientes); al sincronizar, un 409 borra el pendiente sin avisar aunque los litros sean distintos. Editar sin internet falla (solo se encolan registros nuevos).
-3. **Dos quincenas abiertas** con fechas distintas (si no se cierra la anterior) → `/quincenas/abierta` da 500. Las fechas cruzadas ya se bloquean.
-4. **`vista-completa` con `rutaIds`**: excluye grupos con rutaIds vacío y recibos sin ruta; además un grupo con rutas 1,2 suma lo recogido de ambas aunque el filtro sea solo la 1 (los recibos sí se filtran) → rinde por ruta descuadrado.
-5. **Recolecciones duplicadas por concurrencia**: sin restricción única en BD (proveedor + fecha). El POST da 409 y el botón se bloquea, pero dos peticiones simultáneas aún podrían duplicar. `POST /recolecciones/sincronizar` no valida duplicados (hoy no lo usa el frontend).
-6. **Cuentas personalizadas re-heredan ingresos** si se dejan vacías.
+1. **Modo offline de Recolecciones**: sin internet las tarjetas salen "sin registrar" (no se cachean recolecciones ni se muestran las pendientes); al sincronizar, un 409 borra el pendiente sin avisar aunque los litros sean distintos. Editar sin internet falla (solo se encolan registros nuevos).
+2. **Dos quincenas abiertas** con fechas distintas (si no se cierra la anterior) → `/quincenas/abierta` da 500. Las fechas cruzadas ya se bloquean.
+3. **`vista-completa` con `rutaIds`**: excluye grupos con rutaIds vacío y recibos sin ruta; además un grupo con rutas 1,2 suma lo recogido de ambas aunque el filtro sea solo la 1 (los recibos sí se filtran) → rinde por ruta descuadrado.
+4. **Recolecciones duplicadas por concurrencia**: sin restricción única en BD (proveedor + fecha). El POST da 409 y el botón se bloquea, pero dos peticiones simultáneas aún podrían duplicar. `POST /recolecciones/sincronizar` no valida duplicados (hoy no lo usa el frontend).
+5. **Cuentas personalizadas re-heredan ingresos** si se dejan vacías.
 
 ### 🟡 Baja — detalles
-7. `ResumenQuincena.jsx` compara `tipoLeche === 'búfala'` (con tilde) → la etiqueta Búfala nunca aparece.
-8. `PUT /descuentos/{id}` con `valor` vacío → `NullPointerException` (500). La pantalla lo valida antes.
-9. ESLint tiene ~38 problemas previos (mayoría `react-hooks`); no bloquean el build.
-10. Solo existe el test `contextLoads()`.
+6. `ResumenQuincena.jsx` compara `tipoLeche === 'búfala'` (con tilde) → la etiqueta Búfala nunca aparece.
+7. `PUT /descuentos/{id}` con `valor` vacío → `NullPointerException` (500). La pantalla lo valida antes.
+8. ESLint tiene ~38 problemas previos (mayoría `react-hooks`); no bloquean el build.
+9. Solo existe el test `contextLoads()`.
 
 ## Tip IDE
 

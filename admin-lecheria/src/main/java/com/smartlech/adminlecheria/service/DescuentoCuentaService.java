@@ -15,24 +15,28 @@ public class DescuentoCuentaService {
 
     private final DescuentoCuentaRepository descuentoRepository;
     private final QuincenaRepository quincenaRepository;
+    private final QuincenaGuard quincenaGuard;
 
     public List<DescuentoCuenta> listarPorQuincenaYContexto(Long quincenaId, String rutaContexto) {
         return descuentoRepository.findByQuincenaIdAndRutaContexto(quincenaId, rutaContexto);
     }
 
     public DescuentoCuenta guardar(DescuentoCuenta descuento) {
+        quincenaGuard.validarAbierta(descuento.getQuincena());
         return descuentoRepository.save(descuento);
     }
 
     public DescuentoCuenta actualizar(Long id, String nombre, Double valor) {
         DescuentoCuenta d = descuentoRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Descuento no encontrado: " + id));
+        quincenaGuard.validarAbierta(d.getQuincena());
         d.setNombre(nombre);
         d.setValor(valor);
         return descuentoRepository.save(d);
     }
 
     public void eliminar(Long id) {
+        descuentoRepository.findById(id).ifPresent(d -> quincenaGuard.validarAbierta(d.getQuincena()));
         descuentoRepository.deleteById(id);
     }
 
@@ -40,6 +44,7 @@ public class DescuentoCuentaService {
     public void heredarDeQuincenaAnterior(Long quincenaId, String rutaContexto) {
         Quincena actual = quincenaRepository.findById(quincenaId)
             .orElseThrow(() -> new RuntimeException("Quincena no encontrada: " + quincenaId));
+        quincenaGuard.validarAbierta(quincenaId);
 
         Quincena anterior = quincenaRepository.findAll().stream()
             .filter(q -> !q.getId().equals(quincenaId) && q.getFechaFin().isBefore(actual.getFechaInicio()))

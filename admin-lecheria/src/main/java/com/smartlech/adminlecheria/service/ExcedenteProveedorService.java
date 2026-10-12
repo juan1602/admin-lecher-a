@@ -20,12 +20,14 @@ public class ExcedenteProveedorService {
     private final ExcedenteProveedorRepository excedenteRepository;
     private final QuincenaRepository quincenaRepository;
     private final ProveedorRepository proveedorRepository;
+    private final QuincenaGuard quincenaGuard;
 
     public List<ExcedenteProveedor> listarPorQuincena(Long quincenaId) {
         return excedenteRepository.findByQuincenaId(quincenaId);
     }
 
     public ExcedenteProveedor guardarOActualizar(Long quincenaId, Long proveedorId, Double valorPorLitro) {
+        quincenaGuard.validarAbierta(quincenaId);
         ExcedenteProveedor exc = excedenteRepository
             .findByQuincenaIdAndProveedorId(quincenaId, proveedorId)
             .orElseGet(ExcedenteProveedor::new);
@@ -42,6 +44,7 @@ public class ExcedenteProveedorService {
     }
 
     public void eliminarPorQuincenaYProveedor(Long quincenaId, Long proveedorId) {
+        quincenaGuard.validarAbierta(quincenaId);
         excedenteRepository.findByQuincenaIdAndProveedorId(quincenaId, proveedorId)
             .ifPresent(excedenteRepository::delete);
     }
@@ -50,6 +53,7 @@ public class ExcedenteProveedorService {
     public void heredarDeQuincenaAnterior(Long quincenaId) {
         Quincena actual = quincenaRepository.findById(quincenaId)
             .orElseThrow(() -> new RuntimeException("Quincena no encontrada: " + quincenaId));
+        if (Boolean.TRUE.equals(actual.getCerrada())) return;
 
         Quincena anterior = quincenaRepository.findAll().stream()
             .filter(q -> !q.getId().equals(quincenaId) && q.getFechaFin().isBefore(actual.getFechaInicio()))
