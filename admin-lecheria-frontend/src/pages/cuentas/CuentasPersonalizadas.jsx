@@ -10,6 +10,20 @@ function valorRecibo(r) {
   return (r.litrosRecibidos || 0) * (r.precioLitro || 0)
 }
 
+// Precio por litro con el que se calcula el valor del recibo
+function precioRecibo(r) {
+  return r.soloTransporte ? (r.precioTransporte || 0) : (r.precioLitro || 0)
+}
+
+// Texto de precio(s) de una empresa: "$250/L"; si hubo días con precios distintos, "$250 / $260 /L"
+function textoPrecios(g) {
+  const conLitros = g.recibos.filter(r => (r.litrosRecibidos || 0) > 0)
+  const base = conLitros.length > 0 ? conLitros : g.recibos
+  const precios = [...new Set(base.map(precioRecibo))].sort((a, b) => a - b)
+  const solo = base.some(r => r.soloTransporte)
+  return `${precios.map(p => `$${fmt(p)}`).join(' / ')}/L${solo ? ' (solo transporte)' : ''}`
+}
+
 export default function CuentasPersonalizadas() {
   const [quincenas, setQuincenas]             = useState([])
   const [quincenaId, setQuincenaId]           = useState('')
@@ -47,9 +61,10 @@ export default function CuentasPersonalizadas() {
       const grupos = Object.values(
         r.data.reduce((acc, rec) => {
           const key = rec.nombreRecibo
-          if (!acc[key]) acc[key] = { nombre: key, litros: 0, valor: 0 }
+          if (!acc[key]) acc[key] = { nombre: key, litros: 0, valor: 0, recibos: [] }
           acc[key].litros += rec.litrosRecibidos || 0
           acc[key].valor  += valorRecibo(rec)
+          acc[key].recibos.push(rec)
           return acc
         }, {})
       ).sort((a, b) => a.nombre.localeCompare(b.nombre))
@@ -349,7 +364,9 @@ export default function CuentasPersonalizadas() {
                 <div key={g.nombre} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', borderBottom: '1px solid #f5f5f5' }}>
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: '500', color: '#333' }}>{g.nombre}</div>
-                    <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>{fmt(g.litros)} L total</div>
+                    <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+                      {fmt(g.litros)} L total · <span style={{ color: '#666' }}>{textoPrecios(g)}</span>
+                    </div>
                   </div>
                   <div style={{ fontSize: '13px', fontWeight: '600', color: '#27ae60' }}>${fmt(g.valor)}</div>
                 </div>
